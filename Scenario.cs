@@ -65,6 +65,19 @@ namespace VectorIndexScenarioSuite
             return container;
         }
 
+        protected async Task LogErrorToFile(string filePath, string message)
+        {
+            string formattedMessage = message + Environment.NewLine;
+            using (var stream = new FileStream(filePath,
+                FileMode.Append,
+                FileAccess.Write,
+                FileShare.ReadWrite))
+            using (var writer = new StreamWriter(stream))
+            {
+                await writer.WriteLineAsync(message);
+            }
+        }
+
         private CosmosClient CreateBulkCosmosClient()
         {
             CosmosClientOptions cosmosClientOptions = new()

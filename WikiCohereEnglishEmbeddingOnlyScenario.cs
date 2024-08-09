@@ -37,6 +37,8 @@ namespace VectorIndexScenarioSuite
         private const string QUERY_FILE = "wikipedia_query";
         private const string GROUND_TRUTH_FILE = "wikipedia_truth";
         private const string BINARY_FILE_EXT = "fbin";
+        private static readonly string RUN_NAME = "wiki-cohere-en-embeddingonly-" + 
+            Guid.NewGuid();
 
         /* Map 'K' -> Query Results
          * Query Results:
@@ -68,15 +70,15 @@ namespace VectorIndexScenarioSuite
              * 1) Bulk Ingest 'scenario:slice' number of documents into Cosmos container.
              * 2) Query Cosmos container for a query-set and calcualte recall for Nearest Neighbor search.
              */
-            bool skipIngestion = Convert.ToBoolean(this.Configurations["AppSettings:scenario:skipIngestion"]);
+            bool runIngestion = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runIngestion"]);
 
-            if(!skipIngestion)
+            if(runIngestion)
             {
                 await PerformIngestion();
             }
 
-            bool skipQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:skipQuery"]);
-            if(!skipQuery)
+            bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
+            if(runQuery)
             {
                 await PerformQuery();
             }
@@ -114,10 +116,10 @@ namespace VectorIndexScenarioSuite
             var tasks = new List<Task>(numBulkIngestionBatchCount);
             for (int rangeIndex = 0; rangeIndex < numBulkIngestionBatchCount; rangeIndex++)
             {
-                int startVectorId = rangeIndex * numVectorsPerRange;
+                int startVectorId = rangeIndex * numVectorsPerRange ;
                 Console.WriteLine(
-                    $"Starting ingestion for range: {rangeIndex} with start vectorId: {startVectorId}, " +
-                    $"numberVectors: {numVectorsPerRange}");
+                    $"Starting ingestion for range: {rangeIndex} with start vectorId: [{startVectorId}, " +
+                    $"{startVectorId + numVectorsPerRange})");
                 tasks.Add(BulkIngestDataForRange(startVectorId, numVectorsPerRange));
             }
 
@@ -158,23 +160,32 @@ namespace VectorIndexScenarioSuite
         {
             List<Task> queryTasks = new List<Task>(numVectorsToQuery);
             int totalVectorsQueried = 0;
+            string errorLogBasePath = this.Configurations["AppSettings:errorLogBasePath"] ?? 
+                throw new ArgumentNullException("AppSettings:errorLogBasePath");
+            string logFilePath = Path.Combine(errorLogBasePath, $"{RUN_NAME}-query.log");
+
             await foreach ((int vectorId, float[] vector) in BigANNBinaryFormat.GetBinaryDataAsync(GetQueryDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToQuery))
             {
                 string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{EMBEDDING_COLOUMN}, @vectorEmbedding) AS similarityScore " +
                     $"FROM c ORDER BY VectorDistance(c.{EMBEDDING_COLOUMN}, @vectorEmbedding, false)";
 ;
                 var queryDef = new QueryDefinition(queryText).WithParameter("@vectorEmbedding", vector);
-                var queryTask = this.CosmosContainer.GetItemQueryIterator<IdWithSimilarityScore>(queryDef).ReadNextAsync().ContinueWith(queryResponse =>
+                var queryTask = this.CosmosContainer.GetItemQueryIterator<IdWithSimilarityScore>(queryDef).ReadNextAsync().ContinueWith(async queryResponse =>
                 {
-                    // The scenario is designed to expect query response to contain all results in one page. 
-                    Trace.Assert(queryResponse.Result.Count == K);
-
                     if (!queryResponse.IsCompletedSuccessfully)
                     {
-                        Console.WriteLine($"Query failed: {queryResponse.Exception}");
+                        Console.WriteLine($"Query failed for id: {vectorId}.");
+
+                        // Log the error to a file.
+                        string errorLogMessage = $"Error querying vectorId: {vectorId}, " +
+                            $"Error: {queryResponse.Exception.InnerException.Message}";
+                        await LogErrorToFile(logFilePath, errorLogMessage);
                     }
                     else
                     {
+                        // The scenario is designed to expect query response to contain all results in one page. 
+                        Trace.Assert(queryResponse.Result.Count == K);
+
                         var results = new List<IdWithSimilarityScore>(queryResponse.Result.Count);
                         foreach(var idResponse in queryResponse.Result)
                         {
@@ -183,7 +194,7 @@ namespace VectorIndexScenarioSuite
 
                         this.queryResults[K][vectorId.ToString()] = results;
                     }
-                });
+                }).Unwrap();
 
                 queryTasks.Add(queryTask);
 
@@ -210,18 +221,26 @@ namespace VectorIndexScenarioSuite
         {
             // The batches that the SDK creates to optimize throughput have a current maximum of 2Mb or 100 operations per batch, 
             List<Task> ingestTasks = new List<Task>(COSMOSDB_MAX_BATCH_SIZE);
+            string errorLogBasePath = this.Configurations["AppSettings:errorLogBasePath"] ?? 
+                throw new ArgumentNullException("AppSettings:errorLogBasePath");
+            string logFilePath = Path.Combine(errorLogBasePath, $"{RUN_NAME}-ingest.log");
 
             int totalVectorsIngested = 0;
             await foreach ((int vectorId, float[] vector) in BigANNBinaryFormat.GetBinaryDataAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest))
             {
                 var createTask = this.CosmosContainer.CreateItemAsync<WikiCohereEmbeddingOnlyDocument>(
-                    new WikiCohereEmbeddingOnlyDocument(vectorId.ToString(), vector), new PartitionKey(vectorId.ToString())).ContinueWith(itemResponse =>
+                    new WikiCohereEmbeddingOnlyDocument(vectorId.ToString(), vector), new PartitionKey(vectorId.ToString())).ContinueWith(async itemResponse =>
                 {
                     if (!itemResponse.IsCompletedSuccessfully)
                     {
-                        Console.WriteLine($"Insert failed: {itemResponse.Exception}");
+                        Console.WriteLine($"Insert failed for id: {vectorId}.");
+
+                        // Log the error to a file
+                        string errorLogMessage = $"Error ingesting vectorId: {vectorId}, " +
+                            $"Error: {itemResponse.Exception.InnerException.Message}";
+                        await LogErrorToFile(logFilePath, errorLogMessage);
                     }
-                });
+                }).Unwrap();
                 ingestTasks.Add(createTask);
 
                 if (ingestTasks.Count == COSMOSDB_MAX_BATCH_SIZE)
@@ -229,7 +248,8 @@ namespace VectorIndexScenarioSuite
                     await Task.WhenAll(ingestTasks);
                     ingestTasks.Clear();
                     totalVectorsIngested += COSMOSDB_MAX_BATCH_SIZE;
-                    Console.WriteLine($"Finished ingesting {totalVectorsIngested} " +
+                    double percentage = ((double)totalVectorsIngested / numVectorsToIngest) * 100;
+                    Console.WriteLine($"Finished ingesting {percentage.ToString("F2")}% " +
                         $"for Range [{startVectorId},{startVectorId + numVectorsToIngest}).");
                 }
             }

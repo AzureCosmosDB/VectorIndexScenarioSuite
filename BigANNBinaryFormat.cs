@@ -23,8 +23,8 @@ namespace VectorIndexScenarioSuite
     }
 
     /*
-     * Parser for BigANNBinarFormat.
-     * Please see: https://big-ann-benchmarks.com/neurips21.html#bench-datasets for details.
+     * Parser for BigANNBinaryFormat.
+     * Please see: https://big-ann-benchmarks.com/neurips21.html#bench-datasets for format details.
      */
     internal class BigANNBinaryFormat
     {
@@ -83,7 +83,7 @@ namespace VectorIndexScenarioSuite
             {
                 // Seek to the start of the binary data
                 int vectorIdOffset = headerSize;
-                int distanceValueOffset = headerSize + (numberOfVectors * groundTruthK * sizeof(int));
+                long distanceValueOffset = (long)headerSize + ((long)numberOfVectors * groundTruthK * sizeof(int));
                 
                 fileStream.Seek(headerSize, SeekOrigin.Begin);
                 fileStream2.Seek(distanceValueOffset, SeekOrigin.Begin);
@@ -124,7 +124,7 @@ namespace VectorIndexScenarioSuite
             using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true))
             {
                 // Seek to the start of the binary data
-                int vectorFileOffset = headerSize + (startVectorId * vectorSizeInBytes);
+                long vectorFileOffset = (long)headerSize + ((long)startVectorId * vectorSizeInBytes);
                 fileStream.Seek(vectorFileOffset, SeekOrigin.Begin);
 
                 // If we start at vector 10 and want to read 2 vectors, we will read vectors 10 and 11 i.e < 12.

@@ -1,4 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
+using System.Diagnostics;
+
 
 namespace VectorIndexScenarioSuite
 {
@@ -24,7 +26,12 @@ namespace VectorIndexScenarioSuite
 
             Console.WriteLine();
             Console.WriteLine($"Running {scenarioName} scenario.");
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
             await scenario.Run(); 
+            stopwatch.Stop();
+
+            Console.WriteLine($"Scenario run took: {stopwatch.Elapsed.TotalSeconds} seconds.");
 
             Console.WriteLine();
             Console.WriteLine($"Finishing {scenarioName} scenario.");
