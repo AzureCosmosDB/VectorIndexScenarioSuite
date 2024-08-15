@@ -40,27 +40,31 @@ namespace VectorIndexScenarioSuite
         private static readonly string RUN_NAME = "wiki-cohere-en-embeddingonly-" + 
             Guid.NewGuid();
 
-        /* Map 'K' -> Query Results
-         * Query Results:
+        /* Map 'K' -> Neighbor Results
+         * Neighbor Results:
          * Map 'QueryId' -> List of neighbor IdWithSimilarityScore
          */
-        private ConcurrentDictionary<int, ConcurrentDictionary<string, List<IdWithSimilarityScore>>> queryResults;
+        private ConcurrentDictionary<int, ConcurrentDictionary<string, List<IdWithSimilarityScore>>> queryRecallResults;
+
+        /* Map 'K' -> ScenarioMetrics (RU and Latency) */
+        private ConcurrentDictionary<int, ScenarioMetrics> queryMetrics;
+
         private ScenarioMetrics ingestionMetrics;
-        private ScenarioMetrics queryMetrics;
 
         public WikiCohereEnglishEmbeddingOnlyScenario(IConfiguration configurations) : base(configurations, INITIAL_THROUGHPUT)
         {
-            this.queryResults = new ConcurrentDictionary<int, ConcurrentDictionary<string, List<IdWithSimilarityScore>>>();
+            this.queryRecallResults = new ConcurrentDictionary<int, ConcurrentDictionary<string, List<IdWithSimilarityScore>>>();
+            this.queryMetrics = new ConcurrentDictionary<int, ScenarioMetrics>();
+
             this.K_VALS = configurations.GetSection("AppSettings:scenario:kValues").Get<int[]>() ?? 
                 throw new ArgumentNullException("AppSettings:scenario:kValues");
+            this.ingestionMetrics = new ScenarioMetrics(0);
 
             for(int kI = 0; kI < K_VALS.Length; kI++)
             {
-                this.queryResults.TryAdd(K_VALS[kI], new ConcurrentDictionary<string, List<IdWithSimilarityScore>>());
+                this.queryRecallResults.TryAdd(K_VALS[kI], new ConcurrentDictionary<string, List<IdWithSimilarityScore>>());
+                this.queryMetrics.TryAdd(K_VALS[kI], new ScenarioMetrics(0));
             }
-
-            this.ingestionMetrics = new ScenarioMetrics(0);
-            this.queryMetrics = new ScenarioMetrics(0);
         }
 
         public override void Setup()
@@ -77,27 +81,40 @@ namespace VectorIndexScenarioSuite
              */
             bool runIngestion = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runIngestion"]);
 
-            if(runIngestion)
+            if(runIngestion) 
             {
                 await PerformIngestion();
             }
 
             bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
+
             if(runQuery)
             {
-                await PerformQuery();
-            }
+                bool computeRecall = Convert.ToBoolean(this.Configurations["AppSettings:scenario:computeRecall"]);
+                if (computeRecall)
+                {
+                    Console.WriteLine("Performing Query for Recall computation.");
+                    await PerformQueryWithBulkExecution();
+                }
 
-            bool performWarmup = Convert.ToBoolean(this.Configurations["AppSettings:scenario:warmup:performWarmup"]);
-            if (performWarmup)
-            {
-                await PeformWarmUp();
-            }
+                bool computeLatencyAndRUStats = Convert.ToBoolean(this.Configurations["AppSettings:scenario:computeLatencyAndRUStats"]);
+                if (computeLatencyAndRUStats)
+                {
+                    bool performWarmup = Convert.ToBoolean(this.Configurations["AppSettings:scenario:warmup:enabled"]);
+                    if (performWarmup)
+                    {
+                        int numWarmupQueries = Convert.ToInt32(this.Configurations["AppSettings:scenario:warmup:numWarmupQueries"]);
+                        Console.WriteLine($"Performing {numWarmupQueries} queries for Warmup.");
+                        await PerformQuery(true /* isWarmup */, numWarmupQueries, 10 /*KVal*/, GetBaseDataPath());
+                    }
 
-            bool computeRunStats = Convert.ToBoolean(this.Configurations["AppSettings:scenario:computeRunStats"]);
-            if(computeRunStats)
-            {
-                ComputeRunStats(runIngestion, runQuery);
+                    int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
+                    for (int kI = 0; kI < K_VALS.Length; kI++)
+                    {
+                        Console.WriteLine($"Performing {totalQueryVectors} queries for computing Latency/RUs.");
+                        await PerformQuery(false /* isWarmup */, totalQueryVectors, K_VALS[kI] /*KVal*/, GetQueryDataPath());
+                    }
+                }
             }
         }
 
@@ -114,14 +131,26 @@ namespace VectorIndexScenarioSuite
                 for (int kI = 0; kI < K_VALS.Length; kI++)
                 {
                     int kVal = K_VALS[kI];
-                    float recall = groundTruthValidator.ComputeRecall(kVal, this.queryResults[kVal]);
+                    float recall = groundTruthValidator.ComputeRecall(kVal, this.queryRecallResults[kVal]);
 
                     Console.WriteLine($"Recall for K = {kVal} is {recall}.");
                 }
             }
+
+            bool computeLatencyAndRUStats = Convert.ToBoolean(this.Configurations["AppSettings:scenario:computeLatencyAndRUStats"]);
+            if (computeLatencyAndRUStats)
+            {
+                bool runIngestion = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runIngestion"]);
+                bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
+
+                foreach(int kVal in K_VALS)
+                {
+                    ComputeLatencyAndRUStats(runIngestion, runQuery);
+                }
+            }
         }
 
-        private void ComputeRunStats(bool runIngestion, bool runQuery)
+        private void ComputeLatencyAndRUStats(bool runIngestion, bool runQuery)
         {
             Console.WriteLine("Computing Run Stats...");
 
@@ -134,15 +163,18 @@ namespace VectorIndexScenarioSuite
             if (runQuery)
             {
                 Console.WriteLine($"Query Metrics:");
-                Console.WriteLine($"RU Consumption: {this.queryMetrics.GetRequestUnitStatistics()}");
-                Console.WriteLine($"Client Latency Stats: {this.queryMetrics.GetClientLatencyStatistics()}");
-                Console.WriteLine($"Server Latency Stats: {this.queryMetrics.GetServerLatencyStatistics()}");
-            }
-        }
 
-        private async Task PeformWarmUp()
-        {
-            // Perform warumup by querying 
+                for(int kI = 0; kI < K_VALS.Length; kI++)
+                {
+                    int kVal = K_VALS[kI];
+                    Console.WriteLine($"K = {kVal}");
+                    ScenarioMetrics metrics = this.queryMetrics[kVal];
+
+                    Console.WriteLine($"RU Consumption: {metrics.GetRequestUnitStatistics()}");
+                    Console.WriteLine($"Client Latency Stats in Milliseconds: [ {metrics.GetClientLatencyStatistics()} ]");
+                    Console.WriteLine($"Server Latency Stats in Milliseconds: [ {metrics.GetServerLatencyStatistics()} ]");
+                }
+            }
         }
 
         private async Task PerformIngestion()
@@ -170,20 +202,56 @@ namespace VectorIndexScenarioSuite
             await Task.WhenAll(tasks);
         }
 
-        private async Task PerformQuery()
+        private async Task PerformQuery(bool isWarmup, int numQueries, int KVal, string dataPath)
+        {
+            if(!isWarmup)
+            {
+                this.queryMetrics[KVal] = new ScenarioMetrics(numQueries);
+            }
+
+            await foreach ((int vectorId, float[] vector) in 
+                BigANNBinaryFormat.GetBinaryDataAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries))
+            {
+                var queryDefinition = ConstructQueryDefinition(KVal, vector);
+
+                FeedIterator<IdWithSimilarityScore> queryResultSetIterator = 
+                    this.CosmosContainer.GetItemQueryIterator<IdWithSimilarityScore>(queryDefinition);
+                while (queryResultSetIterator.HasMoreResults)
+                {
+                    var response = await queryResultSetIterator.ReadNextAsync();
+
+                    if (!isWarmup)
+                    {
+                        if (response.Count > 0)
+                        {
+                            this.queryMetrics[KVal].AddRequestUnitMeasurement(response.RequestCharge);
+                            this.queryMetrics[KVal].AddClientLatencyMeasurement(response.Diagnostics.GetClientElapsedTime().TotalMilliseconds);
+
+                            this.queryMetrics[KVal].AddServerLatencyMeasurement(
+                                response.Diagnostics.GetQueryMetrics().CumulativeMetrics.TotalTime.TotalMilliseconds);
+                        }
+                    }
+                }
+
+                if (vectorId % COSMOSDB_MAX_BATCH_SIZE == 0)
+                {
+                    double percentage = ((double)vectorId / numQueries) * 100;
+                    Console.WriteLine($"Finished querying {percentage.ToString("F2")}% ");
+                }
+            }
+        }
+
+        private async Task PerformQueryWithBulkExecution()
         {
             // Execute DiskANN Queries
             int numQueryBatchCount = Convert.ToInt32(this.Configurations["AppSettings:scenario:numQueryBatchCount"]);
-            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ??  throw new ArgumentNullException("AppSettings:dataFilesBasePath");
-            string fileName = $"{QUERY_FILE}.{BINARY_FILE_EXT}";
 
-            int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(Path.Combine(directory, fileName)).Item1;
+            int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
             if (totalQueryVectors % numQueryBatchCount != 0)
             {
                 throw new ArgumentException("Total vectors should be evenly divisible by numQueryBatchCount");
             }
             int numVectorsPerRange = totalQueryVectors / numQueryBatchCount;
-            this.queryMetrics = new ScenarioMetrics(totalQueryVectors);
 
             foreach(int kVal in K_VALS)
             {
@@ -194,14 +262,14 @@ namespace VectorIndexScenarioSuite
                     Console.WriteLine(
                         $"Starting querying for K = {kVal}, with start vectorId: {startVectorId}, " +
                         $"numberVectors: {numVectorsPerRange}");
-                    tasks.Add(QueryDataForRange(startVectorId, numVectorsPerRange, kVal));
+                    tasks.Add(QueryDataWithBulkExecutionForRange(startVectorId, numVectorsPerRange, kVal));
                 }
 
                 await Task.WhenAll(tasks);
             }
         }
 
-        private async Task QueryDataForRange(int startVectorId, int numVectorsToQuery, int K)
+        private async Task QueryDataWithBulkExecutionForRange(int startVectorId, int numVectorsToQuery, int K)
         {
             List<Task> queryTasks = new List<Task>(numVectorsToQuery);
             int totalVectorsQueried = 0;
@@ -211,11 +279,8 @@ namespace VectorIndexScenarioSuite
 
             await foreach ((int vectorId, float[] vector) in BigANNBinaryFormat.GetBinaryDataAsync(GetQueryDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToQuery))
             {
-                string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{EMBEDDING_COLOUMN}, @vectorEmbedding) AS similarityScore " +
-                    $"FROM c ORDER BY VectorDistance(c.{EMBEDDING_COLOUMN}, @vectorEmbedding, false)";
-;
-                var queryDef = new QueryDefinition(queryText).WithParameter("@vectorEmbedding", vector);
-                var queryTask = this.CosmosContainer.GetItemQueryIterator<IdWithSimilarityScore>(queryDef).ReadNextAsync().ContinueWith(async queryResponse =>
+                var queryDef = ConstructQueryDefinition(K, vector);
+                var queryTask = this.CosmosContainerWithBulkClient.GetItemQueryIterator<IdWithSimilarityScore>(queryDef).ReadNextAsync().ContinueWith(async queryResponse =>
                 {
                     if (!queryResponse.IsCompletedSuccessfully)
                     {
@@ -231,19 +296,13 @@ namespace VectorIndexScenarioSuite
                         // The scenario is designed to expect query response to contain all results in one page. 
                         Trace.Assert(queryResponse.Result.Count == K);
 
-                        this.ingestionMetrics.AddRequestUnitMeasurement(queryResponse.Result.RequestCharge);
-                        this.ingestionMetrics.AddClientLatencyMeasurement(queryResponse.Result.Diagnostics.GetClientElapsedTime().TotalMicroseconds);
-
-                        ServerSideCumulativeMetrics serverMetrics = queryResponse.Result.Diagnostics.GetQueryMetrics();
-                        this.ingestionMetrics.AddServerLatencyMeasurement(serverMetrics.CumulativeMetrics.TotalTime.TotalMilliseconds);
-
                         var results = new List<IdWithSimilarityScore>(queryResponse.Result.Count);
                         foreach(var idResponse in queryResponse.Result)
                         {
                             results.Add(idResponse);
                         }
 
-                        this.queryResults[K][vectorId.ToString()] = results;
+                        this.queryRecallResults[K][vectorId.ToString()] = results;
                     }
                 }).Unwrap();
 
@@ -269,6 +328,14 @@ namespace VectorIndexScenarioSuite
             }
         }
 
+        private QueryDefinition ConstructQueryDefinition(int K, float[] queryVector)
+        {
+            string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{EMBEDDING_COLOUMN}, @vectorEmbedding) AS similarityScore " +
+                $"FROM c ORDER BY VectorDistance(c.{EMBEDDING_COLOUMN}, @vectorEmbedding, false)";
+;
+            return new QueryDefinition(queryText).WithParameter("@vectorEmbedding", queryVector);
+        }
+
         private async Task BulkIngestDataForRange(int startVectorId, int numVectorsToIngest)
         {
             // The batches that the SDK creates to optimize throughput have a current maximum of 2Mb or 100 operations per batch, 
@@ -280,7 +347,7 @@ namespace VectorIndexScenarioSuite
             int totalVectorsIngested = 0;
             await foreach ((int vectorId, float[] vector) in BigANNBinaryFormat.GetBinaryDataAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest))
             {
-                var createTask = this.CosmosContainer.CreateItemAsync<WikiCohereEmbeddingOnlyDocument>(
+                var createTask = this.CosmosContainerWithBulkClient.CreateItemAsync<WikiCohereEmbeddingOnlyDocument>(
                     new WikiCohereEmbeddingOnlyDocument(vectorId.ToString(), vector), new PartitionKey(vectorId.ToString())).ContinueWith(async itemResponse =>
                 {
                     if (!itemResponse.IsCompletedSuccessfully)
