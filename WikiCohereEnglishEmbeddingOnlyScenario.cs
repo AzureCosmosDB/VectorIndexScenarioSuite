@@ -45,6 +45,8 @@ namespace VectorIndexScenarioSuite
          * Map 'QueryId' -> List of neighbor IdWithSimilarityScore
          */
         private ConcurrentDictionary<int, ConcurrentDictionary<string, List<IdWithSimilarityScore>>> queryResults;
+        private ScenarioMetrics ingestionMetrics;
+        private ScenarioMetrics queryMetrics;
 
         public WikiCohereEnglishEmbeddingOnlyScenario(IConfiguration configurations) : base(configurations, INITIAL_THROUGHPUT)
         {
@@ -56,6 +58,9 @@ namespace VectorIndexScenarioSuite
             {
                 this.queryResults.TryAdd(K_VALS[kI], new ConcurrentDictionary<string, List<IdWithSimilarityScore>>());
             }
+
+            this.ingestionMetrics = new ScenarioMetrics(0);
+            this.queryMetrics = new ScenarioMetrics(0);
         }
 
         public override void Setup()
@@ -82,19 +87,31 @@ namespace VectorIndexScenarioSuite
             {
                 await PerformQuery();
             }
+
+            bool performWarmup = Convert.ToBoolean(this.Configurations["AppSettings:scenario:warmup:performWarmup"]);
+            if (performWarmup)
+            {
+                await PeformWarmUp();
+            }
+
+            bool computeRunStats = Convert.ToBoolean(this.Configurations["AppSettings:scenario:computeRunStats"]);
+            if(computeRunStats)
+            {
+                ComputeRunStats(runIngestion, runQuery);
+            }
         }
 
         public override void Stop()
         {
             bool computeRecall = Convert.ToBoolean(this.Configurations["AppSettings:scenario:computeRecall"]);
-            if(computeRecall)
+            if (computeRecall)
             {
                 Console.WriteLine("Computing Recall.");
                 GroundTruthValidator groundTruthValidator = new GroundTruthValidator(
                     GroundTruthFileType.Binary,
                     GetGroundTruthDataPath());
 
-                for(int kI = 0; kI < K_VALS.Length; kI++)
+                for (int kI = 0; kI < K_VALS.Length; kI++)
                 {
                     int kVal = K_VALS[kI];
                     float recall = groundTruthValidator.ComputeRecall(kVal, this.queryResults[kVal]);
@@ -103,6 +120,31 @@ namespace VectorIndexScenarioSuite
                 }
             }
         }
+
+        private void ComputeRunStats(bool runIngestion, bool runQuery)
+        {
+            Console.WriteLine("Computing Run Stats...");
+
+            if(runIngestion)
+            {
+                Console.WriteLine($"Ingestion Metrics:");
+                Console.WriteLine($"RU Consumption: {this.ingestionMetrics.GetRequestUnitStatistics()}");
+            }
+
+            if (runQuery)
+            {
+                Console.WriteLine($"Query Metrics:");
+                Console.WriteLine($"RU Consumption: {this.queryMetrics.GetRequestUnitStatistics()}");
+                Console.WriteLine($"Client Latency Stats: {this.queryMetrics.GetClientLatencyStatistics()}");
+                Console.WriteLine($"Server Latency Stats: {this.queryMetrics.GetServerLatencyStatistics()}");
+            }
+        }
+
+        private async Task PeformWarmUp()
+        {
+            // Perform warumup by querying 
+        }
+
         private async Task PerformIngestion()
         {
             int numBulkIngestionBatchCount = Convert.ToInt32(this.Configurations["AppSettings:scenario:numBulkIngestionBatchCount"]);
@@ -112,6 +154,8 @@ namespace VectorIndexScenarioSuite
                 throw new ArgumentException("Total vectors should be evenly divisible by numBulkIngestionBatchCount");
             }
             int numVectorsPerRange = totalVectors / numBulkIngestionBatchCount;
+
+            this.ingestionMetrics = new ScenarioMetrics(totalVectors);
 
             var tasks = new List<Task>(numBulkIngestionBatchCount);
             for (int rangeIndex = 0; rangeIndex < numBulkIngestionBatchCount; rangeIndex++)
@@ -139,6 +183,7 @@ namespace VectorIndexScenarioSuite
                 throw new ArgumentException("Total vectors should be evenly divisible by numQueryBatchCount");
             }
             int numVectorsPerRange = totalQueryVectors / numQueryBatchCount;
+            this.queryMetrics = new ScenarioMetrics(totalQueryVectors);
 
             foreach(int kVal in K_VALS)
             {
@@ -185,6 +230,12 @@ namespace VectorIndexScenarioSuite
                     {
                         // The scenario is designed to expect query response to contain all results in one page. 
                         Trace.Assert(queryResponse.Result.Count == K);
+
+                        this.ingestionMetrics.AddRequestUnitMeasurement(queryResponse.Result.RequestCharge);
+                        this.ingestionMetrics.AddClientLatencyMeasurement(queryResponse.Result.Diagnostics.GetClientElapsedTime().TotalMicroseconds);
+
+                        ServerSideCumulativeMetrics serverMetrics = queryResponse.Result.Diagnostics.GetQueryMetrics();
+                        this.ingestionMetrics.AddServerLatencyMeasurement(serverMetrics.CumulativeMetrics.TotalTime.TotalMilliseconds);
 
                         var results = new List<IdWithSimilarityScore>(queryResponse.Result.Count);
                         foreach(var idResponse in queryResponse.Result)
@@ -239,6 +290,11 @@ namespace VectorIndexScenarioSuite
                         string errorLogMessage = $"Error ingesting vectorId: {vectorId}, " +
                             $"Error: {itemResponse.Exception.InnerException.Message}";
                         await LogErrorToFile(logFilePath, errorLogMessage);
+                    }
+                    else
+                    {
+                        // Given we are doing bulk ingestion which is optimized for throughput and not latency, we are not mesuring latency numbers. 
+                        this.ingestionMetrics.AddRequestUnitMeasurement(itemResponse.Result.RequestCharge);
                     }
                 }).Unwrap();
                 ingestTasks.Add(createTask);
