@@ -203,7 +203,8 @@ namespace VectorIndexScenarioSuite
                     await Task.WhenAll(queryTasks);
                     queryTasks.Clear();
                     totalVectorsQueried += COSMOSDB_MAX_BATCH_SIZE;
-                    Console.WriteLine($"Finished querying {totalVectorsQueried} " +
+                    double percentage = ((double)totalVectorsQueried / numVectorsToQuery) * 100;
+                    Console.WriteLine($"Finished querying {percentage.ToString("F2")}% " +
                         $"for Range [{startVectorId},{startVectorId + numVectorsToQuery}).");
                 }
             }
