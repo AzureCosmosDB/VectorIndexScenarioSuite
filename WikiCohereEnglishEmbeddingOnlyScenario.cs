@@ -31,8 +31,6 @@ namespace VectorIndexScenarioSuite
         private const VectorDataType EMBEDDING_DATA_TYPE = VectorDataType.Float32;
         private const DistanceFunction EMBEDDING_DISTANCE_FUNCTION = DistanceFunction.Cosine;
         private const int EMBEDDING_DIMENSIONS = 768;
-        private const int INITIAL_THROUGHPUT = 400;
-        private const int FINAL_THROUGHPUT = 10000;
         private const string BASE_DATA_FILE = "wikipedia_base";
         private const string QUERY_FILE = "wikipedia_query";
         private const string GROUND_TRUTH_FILE = "wikipedia_truth";
@@ -51,7 +49,8 @@ namespace VectorIndexScenarioSuite
 
         private ScenarioMetrics ingestionMetrics;
 
-        public WikiCohereEnglishEmbeddingOnlyScenario(IConfiguration configurations) : base(configurations, INITIAL_THROUGHPUT)
+        public WikiCohereEnglishEmbeddingOnlyScenario(IConfiguration configurations) : 
+            base(configurations, ComputeInitialAndFinalThroughput(configurations).Item1)
         {
             this.queryRecallResults = new ConcurrentDictionary<int, ConcurrentDictionary<string, List<IdWithSimilarityScore>>>();
             this.queryMetrics = new ConcurrentDictionary<int, ScenarioMetrics>();
@@ -69,8 +68,7 @@ namespace VectorIndexScenarioSuite
 
         public override void Setup()
         {
-            // Bump up from min 400RU to 10000RU to avoid throttling while retaining single physical partition.
-            this.CosmosContainer.ReplaceThroughputAsync(FINAL_THROUGHPUT).Wait();
+            this.CosmosContainer.ReplaceThroughputAsync(ComputeInitialAndFinalThroughput(this.Configurations).Item2).Wait();
         }
 
         public override async Task Run()
@@ -143,11 +141,27 @@ namespace VectorIndexScenarioSuite
                 bool runIngestion = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runIngestion"]);
                 bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
 
-                foreach(int kVal in K_VALS)
-                {
-                    ComputeLatencyAndRUStats(runIngestion, runQuery);
-                }
+                ComputeLatencyAndRUStats(runIngestion, runQuery);
             }
+        }
+
+        private static (int, int) ComputeInitialAndFinalThroughput(IConfiguration configurations)
+        {
+             // For wiki-coherscenario, we are starting with :
+             // 1) For upto 1M embedding, Collection Create throughput of 400 RU, bumped to 10,000 RU.
+             // 2) For 35M embedding, Collection Create throughput of 40,000 RU, bumped to 70,000 RU.
+             // This is because we want 1 physical partition in scenrio 1 and 7 physical partitions in scenario 2 (to reduce query fanout).
+             int sliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);
+             switch (sliceCount)
+             {
+                 case 100000:
+                 case 1000000:
+                     return (400, 10000);
+                 case 35000000:
+                     return (40000, 70000);
+                 default:
+                     throw new ArgumentException("Invalid slice count.");
+             }
         }
 
         private void ComputeLatencyAndRUStats(bool runIngestion, bool runQuery)
@@ -410,6 +424,7 @@ namespace VectorIndexScenarioSuite
             string fileName = $"{GROUND_TRUTH_FILE}_{this.Configurations["AppSettings:scenario:sliceCount"]}";
             return Path.Combine(directory, fileName);
         }
+
         protected override ContainerProperties GetContainerSpec(string containerName)
         {
             ContainerProperties properties = new ContainerProperties(id: containerName, partitionKeyPath: PARTITION_KEY_PATH)
