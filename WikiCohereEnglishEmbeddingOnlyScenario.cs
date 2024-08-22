@@ -215,7 +215,9 @@ namespace VectorIndexScenarioSuite
                 var queryDefinition = ConstructQueryDefinition(KVal, vector);
 
                 FeedIterator<IdWithSimilarityScore> queryResultSetIterator = 
-                    this.CosmosContainer.GetItemQueryIterator<IdWithSimilarityScore>(queryDefinition);
+                    this.CosmosContainer.GetItemQueryIterator<IdWithSimilarityScore>(queryDefinition,
+                    // Issue parallel queries to all partitions, capping this to 56 but can be tuned based on change in setup.
+                    requestOptions: new QueryRequestOptions { MaxConcurrency = 56 });
 
                 while (queryResultSetIterator.HasMoreResults)
                 {
@@ -231,9 +233,9 @@ namespace VectorIndexScenarioSuite
                             }
                             var results = this.queryRecallResults[KVal][vectorId.ToString()];
 
-                            foreach (var idResponse in queryResponse)
+                            foreach (var idWithScoreResponse in queryResponse)
                             {
-                                results.Add(idResponse);
+                                results.Add(idWithScoreResponse);
                             }
 
                             this.queryMetrics[KVal].AddRequestUnitMeasurement(
