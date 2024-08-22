@@ -3,7 +3,6 @@ using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 namespace VectorIndexScenarioSuite
 {
     internal class WikiCohereEmbeddingOnlyDocument
@@ -88,30 +87,19 @@ namespace VectorIndexScenarioSuite
 
             if(runQuery)
             {
-                bool computeRecall = Convert.ToBoolean(this.Configurations["AppSettings:scenario:computeRecall"]);
-                if (computeRecall)
+                bool performWarmup = Convert.ToBoolean(this.Configurations["AppSettings:scenario:warmup:enabled"]);
+                if (performWarmup)
                 {
-                    Console.WriteLine("Performing Query for Recall computation.");
-                    await PerformQueryWithBulkExecution();
+                    int numWarmupQueries = Convert.ToInt32(this.Configurations["AppSettings:scenario:warmup:numWarmupQueries"]);
+                    Console.WriteLine($"Performing {numWarmupQueries} queries for Warmup.");
+                    await PerformQuery(true /* isWarmup */, numWarmupQueries, 10 /*KVal*/, GetBaseDataPath());
                 }
 
-                bool computeLatencyAndRUStats = Convert.ToBoolean(this.Configurations["AppSettings:scenario:computeLatencyAndRUStats"]);
-                if (computeLatencyAndRUStats)
+                int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
+                for (int kI = 0; kI < K_VALS.Length; kI++)
                 {
-                    bool performWarmup = Convert.ToBoolean(this.Configurations["AppSettings:scenario:warmup:enabled"]);
-                    if (performWarmup)
-                    {
-                        int numWarmupQueries = Convert.ToInt32(this.Configurations["AppSettings:scenario:warmup:numWarmupQueries"]);
-                        Console.WriteLine($"Performing {numWarmupQueries} queries for Warmup.");
-                        await PerformQuery(true /* isWarmup */, numWarmupQueries, 10 /*KVal*/, GetBaseDataPath());
-                    }
-
-                    int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
-                    for (int kI = 0; kI < K_VALS.Length; kI++)
-                    {
-                        Console.WriteLine($"Performing {totalQueryVectors} queries for computing Latency/RUs.");
-                        await PerformQuery(false /* isWarmup */, totalQueryVectors, K_VALS[kI] /*KVal*/, GetQueryDataPath());
-                    }
+                    Console.WriteLine($"Performing {totalQueryVectors} queries for Recall/RU/Latency stats for K: {K_VALS[kI]}.");
+                    await PerformQuery(false /* isWarmup */, totalQueryVectors, K_VALS[kI] /*KVal*/, GetQueryDataPath());
                 }
             }
         }
@@ -166,8 +154,6 @@ namespace VectorIndexScenarioSuite
 
         private void ComputeLatencyAndRUStats(bool runIngestion, bool runQuery)
         {
-            Console.WriteLine("Computing Run Stats...");
-
             if(runIngestion)
             {
                 Console.WriteLine($"Ingestion Metrics:");
@@ -230,115 +216,47 @@ namespace VectorIndexScenarioSuite
 
                 FeedIterator<IdWithSimilarityScore> queryResultSetIterator = 
                     this.CosmosContainer.GetItemQueryIterator<IdWithSimilarityScore>(queryDefinition);
+
                 while (queryResultSetIterator.HasMoreResults)
                 {
-                    var response = await queryResultSetIterator.ReadNextAsync();
+                    var queryResponse = await queryResultSetIterator.ReadNextAsync();
 
                     if (!isWarmup)
                     {
-                        if (response.Count > 0)
+                        if (queryResponse.Count > 0)
                         {
-                            this.queryMetrics[KVal].AddRequestUnitMeasurement(response.RequestCharge);
-                            this.queryMetrics[KVal].AddClientLatencyMeasurement(response.Diagnostics.GetClientElapsedTime().TotalMilliseconds);
+                            if (!this.queryRecallResults[KVal].ContainsKey(vectorId.ToString()))
+                            {
+                                this.queryRecallResults[KVal].TryAdd(vectorId.ToString(), new List<IdWithSimilarityScore>(KVal));
+                            }
+                            var results = this.queryRecallResults[KVal][vectorId.ToString()];
 
-                            this.queryMetrics[KVal].AddServerLatencyMeasurement(
-                                response.Diagnostics.GetQueryMetrics().CumulativeMetrics.TotalTime.TotalMilliseconds);
+                            foreach (var idResponse in queryResponse)
+                            {
+                                results.Add(idResponse);
+                            }
+
+                            this.queryMetrics[KVal].AddRequestUnitMeasurement(
+                                queryResponse.RequestCharge);
+                            this.queryMetrics[KVal].AddClientLatencyMeasurement(
+                                queryResponse.Diagnostics.GetClientElapsedTime().TotalMilliseconds);
+
+                            // QueryMetrics is null for second and subsequent pages of query results.
+                            if (queryResponse.Diagnostics.GetQueryMetrics() != null)
+                            {
+                                this.queryMetrics[KVal].AddServerLatencyMeasurement(
+                                    queryResponse.Diagnostics.GetQueryMetrics().CumulativeMetrics.TotalTime.TotalMilliseconds);
+                            }
                         }
                     }
                 }
 
-                if (vectorId % COSMOSDB_MAX_BATCH_SIZE == 0)
+                int vectorCount = vectorId + 1;
+                if (vectorCount % COSMOSDB_MAX_BATCH_SIZE == 0)
                 {
                     double percentage = ((double)vectorId / numQueries) * 100;
                     Console.WriteLine($"Finished querying {percentage.ToString("F2")}% ");
                 }
-            }
-        }
-
-        private async Task PerformQueryWithBulkExecution()
-        {
-            // Execute DiskANN Queries
-            int numQueryBatchCount = Convert.ToInt32(this.Configurations["AppSettings:scenario:numQueryBatchCount"]);
-
-            int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
-            if (totalQueryVectors % numQueryBatchCount != 0)
-            {
-                throw new ArgumentException("Total vectors should be evenly divisible by numQueryBatchCount");
-            }
-            int numVectorsPerRange = totalQueryVectors / numQueryBatchCount;
-
-            foreach(int kVal in K_VALS)
-            {
-                var tasks = new List<Task>(numQueryBatchCount);
-                for (int rangeIndex = 0; rangeIndex < numQueryBatchCount; rangeIndex++)
-                {
-                    int startVectorId = rangeIndex * numVectorsPerRange;
-                    Console.WriteLine(
-                        $"Starting querying for K = {kVal}, with start vectorId: {startVectorId}, " +
-                        $"numberVectors: {numVectorsPerRange}");
-                    tasks.Add(QueryDataWithBulkExecutionForRange(startVectorId, numVectorsPerRange, kVal));
-                }
-
-                await Task.WhenAll(tasks);
-            }
-        }
-
-        private async Task QueryDataWithBulkExecutionForRange(int startVectorId, int numVectorsToQuery, int K)
-        {
-            List<Task> queryTasks = new List<Task>(numVectorsToQuery);
-            int totalVectorsQueried = 0;
-            string errorLogBasePath = this.Configurations["AppSettings:errorLogBasePath"] ?? 
-                throw new ArgumentNullException("AppSettings:errorLogBasePath");
-            string logFilePath = Path.Combine(errorLogBasePath, $"{RUN_NAME}-query.log");
-
-            await foreach ((int vectorId, float[] vector) in BigANNBinaryFormat.GetBinaryDataAsync(GetQueryDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToQuery))
-            {
-                var queryDef = ConstructQueryDefinition(K, vector);
-                var queryTask = this.CosmosContainerWithBulkClient.GetItemQueryIterator<IdWithSimilarityScore>(queryDef).ReadNextAsync().ContinueWith(async queryResponse =>
-                {
-                    if (!queryResponse.IsCompletedSuccessfully)
-                    {
-                        Console.WriteLine($"Query failed for id: {vectorId}.");
-
-                        // Log the error to a file.
-                        string errorLogMessage = $"Error querying vectorId: {vectorId}, " +
-                            $"Error: {queryResponse.Exception.InnerException.Message}";
-                        await LogErrorToFile(logFilePath, errorLogMessage);
-                    }
-                    else
-                    {
-                        // The scenario is designed to expect query response to contain all results in one page. 
-                        Trace.Assert(queryResponse.Result.Count == K);
-
-                        var results = new List<IdWithSimilarityScore>(queryResponse.Result.Count);
-                        foreach(var idResponse in queryResponse.Result)
-                        {
-                            results.Add(idResponse);
-                        }
-
-                        this.queryRecallResults[K][vectorId.ToString()] = results;
-                    }
-                }).Unwrap();
-
-                queryTasks.Add(queryTask);
-
-                if (queryTasks.Count == COSMOSDB_MAX_BATCH_SIZE)
-                {
-                    await Task.WhenAll(queryTasks);
-                    queryTasks.Clear();
-                    totalVectorsQueried += COSMOSDB_MAX_BATCH_SIZE;
-                    double percentage = ((double)totalVectorsQueried / numVectorsToQuery) * 100;
-                    Console.WriteLine($"Finished querying {percentage.ToString("F2")}% " +
-                        $"for Range [{startVectorId},{startVectorId + numVectorsToQuery}).");
-                }
-            }
-
-            if (queryTasks.Count > 0)
-            {
-                await Task.WhenAll(queryTasks);
-                totalVectorsQueried += queryTasks.Count;
-                queryTasks.Clear();
-                Console.WriteLine($"Finished querying for Range [{startVectorId},{startVectorId + totalVectorsQueried}).");
             }
         }
 

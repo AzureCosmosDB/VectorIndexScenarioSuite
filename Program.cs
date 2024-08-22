@@ -25,7 +25,7 @@ namespace VectorIndexScenarioSuite
             scenario.Setup();
 
             Console.WriteLine();
-            Console.WriteLine($"Running {scenarioName} scenario.");
+            Console.WriteLine($"Running {scenarioName} scenario. StartTime: {DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")}");
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
             await scenario.Run(); 
@@ -34,7 +34,7 @@ namespace VectorIndexScenarioSuite
             Console.WriteLine($"Scenario run took: {stopwatch.Elapsed.TotalSeconds} seconds.");
 
             Console.WriteLine();
-            Console.WriteLine($"Finishing {scenarioName} scenario.");
+            Console.WriteLine($"Finishing {scenarioName} scenario. EndTime: {DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")}");
             scenario.Stop();
 
             Console.WriteLine("Press Enter to exit...");
