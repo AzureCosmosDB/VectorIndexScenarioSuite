@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 namespace VectorIndexScenarioSuite
 {
     internal class WikiCohereEmbeddingOnlyDocument
@@ -30,12 +31,18 @@ namespace VectorIndexScenarioSuite
         private const VectorDataType EMBEDDING_DATA_TYPE = VectorDataType.Float32;
         private const DistanceFunction EMBEDDING_DISTANCE_FUNCTION = DistanceFunction.Cosine;
         private const int EMBEDDING_DIMENSIONS = 768;
+        private const int MAX_PHYSICAL_PARTITION_COUNT = 56;
         private const string BASE_DATA_FILE = "wikipedia_base";
         private const string QUERY_FILE = "wikipedia_query";
         private const string GROUND_TRUTH_FILE = "wikipedia_truth";
         private const string BINARY_FILE_EXT = "fbin";
         private static readonly string RUN_NAME = "wiki-cohere-en-embeddingonly-" + 
             Guid.NewGuid();
+
+        /* Known Slices */
+        private const int HUNDRED_THOUSAND = 100000;
+        private const int ONE_MILLION =  1000000;
+        private const int THIRTY_FIVE_MILLION = 35000000;
 
         /* Map 'K' -> Neighbor Results
          * Neighbor Results:
@@ -142,10 +149,10 @@ namespace VectorIndexScenarioSuite
              int sliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);
              switch (sliceCount)
              {
-                 case 100000:
-                 case 1000000:
+                 case HUNDRED_THOUSAND:
+                 case ONE_MILLION:
                      return (400, 10000);
-                 case 35000000:
+                 case THIRTY_FIVE_MILLION:
                      return (40000, 70000);
                  default:
                      throw new ArgumentException("Invalid slice count.");
@@ -216,9 +223,10 @@ namespace VectorIndexScenarioSuite
 
                 FeedIterator<IdWithSimilarityScore> queryResultSetIterator = 
                     this.CosmosContainer.GetItemQueryIterator<IdWithSimilarityScore>(queryDefinition,
-                    // Issue parallel queries to all partitions, capping this to 56 but can be tuned based on change in setup.
-                    requestOptions: new QueryRequestOptions { MaxConcurrency = 56 });
+                    // Issue parallel queries to all partitions, capping this to MAX_PHYSICAL_PARTITION_COUNT but can be tuned based on change in setup.
+                    requestOptions: new QueryRequestOptions { MaxConcurrency = (MAX_PHYSICAL_PARTITION_COUNT) });
 
+                int iterationCount = 1;
                 while (queryResultSetIterator.HasMoreResults)
                 {
                     var queryResponse = await queryResultSetIterator.ReadNextAsync();
@@ -227,6 +235,18 @@ namespace VectorIndexScenarioSuite
                     {
                         if (queryResponse.Count > 0)
                         {
+                            // Get Client time before doing any more work.
+                            // The second iteration does not have meaningful RU and Latency numbers.
+                            if (queryResponse.RequestCharge > 0)
+                            {
+                                Trace.Assert(iterationCount == 1);
+
+                                this.queryMetrics[KVal].AddRequestUnitMeasurement(
+                                    queryResponse.RequestCharge);
+                                this.queryMetrics[KVal].AddClientLatencyMeasurement(
+                                    queryResponse.Diagnostics.GetClientElapsedTime().TotalMilliseconds);
+                            }
+
                             if (!this.queryRecallResults[KVal].ContainsKey(vectorId.ToString()))
                             {
                                 this.queryRecallResults[KVal].TryAdd(vectorId.ToString(), new List<IdWithSimilarityScore>(KVal));
@@ -238,18 +258,15 @@ namespace VectorIndexScenarioSuite
                                 results.Add(idWithScoreResponse);
                             }
 
-                            this.queryMetrics[KVal].AddRequestUnitMeasurement(
-                                queryResponse.RequestCharge);
-                            this.queryMetrics[KVal].AddClientLatencyMeasurement(
-                                queryResponse.Diagnostics.GetClientElapsedTime().TotalMilliseconds);
-
-                            // QueryMetrics is null for second and subsequent pages of query results.
+                            // Similarly, QueryMetrics is null for second and subsequent pages of query results.
                             if (queryResponse.Diagnostics.GetQueryMetrics() != null)
                             {
                                 this.queryMetrics[KVal].AddServerLatencyMeasurement(
                                     queryResponse.Diagnostics.GetQueryMetrics().CumulativeMetrics.TotalTime.TotalMilliseconds);
                             }
                         }
+
+                        iterationCount++;
                     }
                 }
 
