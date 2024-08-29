@@ -3,7 +3,6 @@ using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 namespace VectorIndexScenarioSuite
 {
     internal class WikiCohereEmbeddingOnlyDocument
@@ -113,8 +112,10 @@ namespace VectorIndexScenarioSuite
 
         public override void Stop()
         {
+            bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
             bool computeRecall = Convert.ToBoolean(this.Configurations["AppSettings:scenario:computeRecall"]);
-            if (computeRecall)
+
+            if (runQuery && computeRecall)
             {
                 Console.WriteLine("Computing Recall.");
                 GroundTruthValidator groundTruthValidator = new GroundTruthValidator(
@@ -134,8 +135,6 @@ namespace VectorIndexScenarioSuite
             if (computeLatencyAndRUStats)
             {
                 bool runIngestion = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runIngestion"]);
-                bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
-
                 ComputeLatencyAndRUStats(runIngestion, runQuery);
             }
         }
@@ -221,61 +220,71 @@ namespace VectorIndexScenarioSuite
             {
                 var queryDefinition = ConstructQueryDefinition(KVal, vector);
 
-                FeedIterator<IdWithSimilarityScore> queryResultSetIterator = 
-                    this.CosmosContainer.GetItemQueryIterator<IdWithSimilarityScore>(queryDefinition,
-                    // Issue parallel queries to all partitions, capping this to MAX_PHYSICAL_PARTITION_COUNT but can be tuned based on change in setup.
-                    requestOptions: new QueryRequestOptions { MaxConcurrency = (MAX_PHYSICAL_PARTITION_COUNT) });
-
-                int iterationCount = 1;
-                while (queryResultSetIterator.HasMoreResults)
+                bool retryQueryOnFailureForLatencyMeasurement;
+                do
                 {
-                    var queryResponse = await queryResultSetIterator.ReadNextAsync();
+                    FeedIterator<IdWithSimilarityScore> queryResultSetIterator = 
+                        this.CosmosContainer.GetItemQueryIterator<IdWithSimilarityScore>(queryDefinition,
+                        // Issue parallel queries to all partitions, capping this to MAX_PHYSICAL_PARTITION_COUNT but can be tuned based on change in setup.
+                        requestOptions: new QueryRequestOptions { MaxConcurrency = (MAX_PHYSICAL_PARTITION_COUNT) });
 
-                    if (!isWarmup)
+                    retryQueryOnFailureForLatencyMeasurement = false;
+                    while (queryResultSetIterator.HasMoreResults)
                     {
-                        if (queryResponse.Count > 0)
+                        var queryResponse = await queryResultSetIterator.ReadNextAsync();
+
+                        if (!isWarmup)
                         {
-                            // Get Client time before doing any more work.
-                            // The second iteration does not have meaningful RU and Latency numbers.
-                            if (queryResponse.RequestCharge > 0)
+                            // If we are computing latency and RU stats, don't consider any query with failed requests (implies it was throttled).
+                            bool computeLatencyAndRUStats = Convert.ToBoolean(this.Configurations["AppSettings:scenario:computeLatencyAndRUStats"]);
+                            if (computeLatencyAndRUStats && queryResponse.Diagnostics.GetFailedRequestCount() > 0)
                             {
-                                Trace.Assert(iterationCount == 1);
-
-                                this.queryMetrics[KVal].AddRequestUnitMeasurement(
-                                    queryResponse.RequestCharge);
-                                this.queryMetrics[KVal].AddClientLatencyMeasurement(
-                                    queryResponse.Diagnostics.GetClientElapsedTime().TotalMilliseconds);
+                                Console.WriteLine($"Retrying for vectorId : {vectorId}.");
+                                retryQueryOnFailureForLatencyMeasurement = true;
+                                break;
                             }
 
-                            if (!this.queryRecallResults[KVal].ContainsKey(vectorId.ToString()))
+                            if (!retryQueryOnFailureForLatencyMeasurement && queryResponse.Count > 0)
                             {
-                                this.queryRecallResults[KVal].TryAdd(vectorId.ToString(), new List<IdWithSimilarityScore>(KVal));
-                            }
-                            var results = this.queryRecallResults[KVal][vectorId.ToString()];
+                                // Get Client time before doing any more work. Validated this matches stopwatch time.
+                                // The second iteration does not have meaningful RU and Latency numbers.
+                                if (queryResponse.RequestCharge > 0)
+                                {
+                                    this.queryMetrics[KVal].AddRequestUnitMeasurement(
+                                        queryResponse.RequestCharge);
+                                    this.queryMetrics[KVal].AddClientLatencyMeasurement(
+                                        queryResponse.Diagnostics.GetClientElapsedTime().TotalMilliseconds);
+                                }
 
-                            foreach (var idWithScoreResponse in queryResponse)
-                            {
-                                results.Add(idWithScoreResponse);
-                            }
+                                if (!this.queryRecallResults[KVal].ContainsKey(vectorId.ToString()))
+                                {
+                                    this.queryRecallResults[KVal].TryAdd(vectorId.ToString(), new List<IdWithSimilarityScore>(KVal));
+                                }
+                                var results = this.queryRecallResults[KVal][vectorId.ToString()];
 
-                            // Similarly, QueryMetrics is null for second and subsequent pages of query results.
-                            if (queryResponse.Diagnostics.GetQueryMetrics() != null)
-                            {
-                                this.queryMetrics[KVal].AddServerLatencyMeasurement(
-                                    queryResponse.Diagnostics.GetQueryMetrics().CumulativeMetrics.TotalTime.TotalMilliseconds);
+                                foreach (var idWithScoreResponse in queryResponse)
+                                {
+                                    results.Add(idWithScoreResponse);
+                                }
+
+                                // Similarly, QueryMetrics is null for second and subsequent pages of query results.
+                                if (queryResponse.Diagnostics.GetQueryMetrics() != null)
+                                {
+                                    this.queryMetrics[KVal].AddServerLatencyMeasurement(
+                                        queryResponse.Diagnostics.GetQueryMetrics().CumulativeMetrics.TotalTime.TotalMilliseconds);
+                                }
                             }
                         }
+                    }
 
-                        iterationCount++;
+                    int vectorCount = vectorId + 1;
+                    if (vectorCount % COSMOSDB_MAX_BATCH_SIZE == 0)
+                    {
+                        double percentage = ((double)vectorId / numQueries) * 100;
+                        Console.WriteLine($"Finished querying {percentage.ToString("F2")}% ");
                     }
                 }
-
-                int vectorCount = vectorId + 1;
-                if (vectorCount % COSMOSDB_MAX_BATCH_SIZE == 0)
-                {
-                    double percentage = ((double)vectorId / numQueries) * 100;
-                    Console.WriteLine($"Finished querying {percentage.ToString("F2")}% ");
-                }
+                while ( retryQueryOnFailureForLatencyMeasurement );
             }
         }
 

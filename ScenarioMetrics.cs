@@ -11,10 +11,11 @@ namespace VectorIndexScenarioSuite
         public double P95 { get; set; }
         public double P99 { get; set; }
         public double Max { get; set; }
+        public double Avg { get; set; }
 
         public override string ToString()
         {
-            return $"Min: {Min}, P50: {P50}, P95: {P95}, P99: {P99}, Max: {Max}";
+            return $"Min: {Min}, P50: {P50}, P95: {P95}, P99: {P99}, Max: {Max}, Avg: {Avg}";
         }
     }
 
@@ -97,6 +98,7 @@ namespace VectorIndexScenarioSuite
             double p50 = Statistics.Percentile(measurements, 50);
             double p95 = Statistics.Percentile(measurements, 95);
             double p99 = Statistics.Percentile(measurements, 99);
+            double avg = descriptiveStatistics.Mean;
 
             return new PercentileStats()
             {
@@ -104,7 +106,8 @@ namespace VectorIndexScenarioSuite
                 P50 = p50,
                 P95 = p95,
                 P99 = p99,
-                Max = max
+                Max = max,
+                Avg = avg
             };
         }
     }
