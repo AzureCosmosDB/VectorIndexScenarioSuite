@@ -17,4 +17,4 @@ For a detailed explanation and walkthrough of each scenario, refer to our [Cosmo
 
     The dataset uses the BigANNBinary format documented at [BigANNBenchmarks](https://big-ann-benchmarks.com/neurips21.html#bench-datasets)
 
-Please Watch / Star this repository as we will be adding multiple new scenarios in coming future.
+Please Watch / Star this repository as we will be adding multiple new scenarios in the near future.
