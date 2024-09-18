@@ -153,10 +153,10 @@ namespace VectorIndexScenarioSuite
                 {
                     if (!itemResponse.IsCompletedSuccessfully)
                     {
-                        Console.WriteLine($"Insert failed for id: {vectorId}.");
+                        Console.WriteLine($"Operation failed for id: {vectorId}.");
 
                         // Log the error to a file
-                        string errorLogMessage = $"Error ingesting vectorId: {vectorId}, " +
+                        string errorLogMessage = $"Error for vectorId: {vectorId}, " +
                             $"Error: {itemResponse.Exception.InnerException.Message}";
                         await LogErrorToFile(logFilePath, errorLogMessage);
                     }
