@@ -52,7 +52,6 @@ namespace VectorIndexScenarioSuite
                         if (runIngestion && (operationId >= startOperationId))
                         {
                             await PerformIngestion(IngestionOperationType.Insert, start, numVectors);
-                            continue;
                         }
 
                         totalVectorsInserted += numVectors;
