@@ -138,7 +138,8 @@ namespace VectorIndexScenarioSuite
 
             await Task.WhenAll(tasks);
         }
-       protected async Task BulkIngestDataForRange(IngestionOperationType ingestionOperationType, int startVectorId, int numVectorsToIngest)
+
+        protected async Task BulkIngestDataForRange(IngestionOperationType ingestionOperationType, int startVectorId, int numVectorsToIngest)
         {
             // The batches that the SDK creates to optimize throughput have a current maximum of 2Mb or 100 operations per batch, 
             List<Task> ingestTasks = new List<Task>(COSMOSDB_MAX_BATCH_SIZE);

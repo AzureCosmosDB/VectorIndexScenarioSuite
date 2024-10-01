@@ -7,7 +7,7 @@ namespace VectorIndexScenarioSuite
         private const string RUNBOOK_PATH = "runbooks/wikipedia-35M_expirationtime_runbook.yaml";
         private const string GROUND_TRUTH_FILE_PREFIX_FOR_STEP = "step";
 
-        /* This dataset comes with ground truth computed upto 100NN. */
+        /* This dataset comes with ground truth computed till 100 Nearest Neighbors. */
         private const string GROUND_TRUTH_FILE_EXTENSION_FOR_STEP = ".gt100";
 
         public WikiCohereEnglishEmbeddingOnlyStreamingScenario(IConfiguration configurations) : 
@@ -22,8 +22,6 @@ namespace VectorIndexScenarioSuite
         public override async Task Run()
         {
             Runbook book = await Runbook.Parse(RUNBOOK_PATH);
-            int totalVectorsInserted = 0;
-            int totalVectorsDeleted = 0;
             int startOperationId = Convert.ToInt32(this.Configurations["AppSettings:scenario:streaming:startOperationId"]);
             int stopOperationId = Convert.ToInt32(this.Configurations["AppSettings:scenario:streaming:stopOperationId"]);
 
@@ -36,12 +34,13 @@ namespace VectorIndexScenarioSuite
             int deleteSteps = 0;
             int currentVectorCount = 0;
 
+            int totalVectorsInserted = 0;
+            int totalVectorsDeleted = 0;
             foreach (var operationIdValue in book.RunbookData.Operation)
             {
                 int operationId = Int32.Parse(operationIdValue.Key);
                 Operation operation = operationIdValue.Value;
 
-                Console.WriteLine($"Executing Operation: {operation.Name} with OperationId: {operationId}");
                 switch (operation.Name)
                 {
                     case "insert":
@@ -55,12 +54,14 @@ namespace VectorIndexScenarioSuite
                         }
 
                         totalVectorsInserted += numVectors;
+
+                        // Count insert step even if we skipped it as from runbook execution perspective, it was still done before.
                         insertSteps++;
                         break;
                     }
                     case "search":
                     {  
-                        // No warmup logic added for now as we are not concerned with latency and onyl recall.
+                        // No warmup logic added for now as this scenario is focused on recall.
                         if (runQuery && (operationId >= startOperationId))
                         {
                             int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
@@ -89,6 +90,7 @@ namespace VectorIndexScenarioSuite
                             }
                         }
 
+                        // Count search step even if we skipped it as from runbook execution perspective, it was still done before.
                         searchSteps++;
                         break;
                     }
@@ -104,6 +106,7 @@ namespace VectorIndexScenarioSuite
                         }
                         totalVectorsDeleted += numVectors;
 
+                        // Count delete step even if we skipped it as from runbook execution perspective, it was still done before.
                         deleteSteps++;
                         break;
                     }
@@ -112,6 +115,8 @@ namespace VectorIndexScenarioSuite
                         throw new InvalidOperationException($"Invalid operation {operation.Name} in runbook.");
                     }
                 }
+
+                Console.WriteLine($"Executed Operation: {operation.Name} with OperationId: {operationId}");
 
                 currentVectorCount = totalVectorsInserted - totalVectorsDeleted;
                 if (currentVectorCount > totalNetVectorsToIngest || operationId > stopOperationId)
@@ -136,14 +141,14 @@ namespace VectorIndexScenarioSuite
 
         private static (int, int) ComputeInitialAndFinalThroughput(IConfiguration configurations)
         {
-            // Hardcoded for now : 10 partitions
+            // Setup the scenario with 10physical partitions and 100K RU/s.
             // Partition count = ceil(RUs / 6000)
             return (60000, 100000);
         }
 
         public override void Stop()
         {
-            // No Operation requried.
+            // No Operation required.
         }
     }
 }

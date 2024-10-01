@@ -19,7 +19,7 @@ namespace VectorIndexScenarioSuite
         {
             /* WikiCohereEnglishScenario is a simple scenario with following steps :
              * 1) Bulk Ingest 'scenario:slice' number of documents into Cosmos container.
-             * 2) Query Cosmos container for a query-set and calcualte recall for Nearest Neighbor search.
+             * 2) Query Cosmos container for a query-set and calculate recall for Nearest Neighbor search.
              */
             bool runIngestion = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runIngestion"]);
 
@@ -122,10 +122,10 @@ namespace VectorIndexScenarioSuite
 
         private static (int, int) ComputeInitialAndFinalThroughput(IConfiguration configurations)
         {
-             // For wiki-coherscenario, we are starting with :
+             // For wiki-cohere scenario, we are starting with :
              // 1) For upto 1M embedding, Collection Create throughput of 400 RU, bumped to 10,000 RU.
              // 2) For 35M embedding, Collection Create throughput of 40,000 RU, bumped to 70,000 RU.
-             // This is because we want 1 physical partition in scenrio 1 and 7 physical partitions in scenario 2 (to reduce query fanout).
+             // This is because we want 1 physical partition in scenario 1 and 7 physical partitions in scenario 2 (to reduce query fanout).
              int sliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);
              switch (sliceCount)
              {
