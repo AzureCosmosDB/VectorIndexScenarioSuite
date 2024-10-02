@@ -1,9 +1,23 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Azure.Cosmos;
+using Microsoft.Extensions.Configuration;
 
 namespace VectorIndexScenarioSuite
 {
-    internal class WikiCohereEnglishEmbeddingOnlyStreamingScenario : WikiCohereEmbeddingOnlyBaseSceario
+    internal class WikiCohereEnglishEmbeddingOnlyStreamingScenario : EmbeddingOnlyScearioBase
     {
+        protected override string BaseDataFile => "wikipedia_base";
+        protected override string BinaryFileExt => "fbin";
+        protected override string QueryFile => "wikipedia_query";
+        protected override string GetGroundTruthFileName => "wikipedia_truth";
+        protected override string PartitionKeyPath => "/id";
+        protected override string EmbeddingColumn => "embedding";
+        protected override string EmbeddingPath => $"/{EmbeddingColumn}";
+        protected override VectorDataType EmbeddingDataType => VectorDataType.Float32;
+        protected override DistanceFunction EmbeddingDistanceFunction => DistanceFunction.Cosine;
+        protected override ulong EmbeddingDimensions => 768;
+        protected override int MaxPhysicalPartitionCount => 56;
+        protected override string RunName => "wiki-cohere-en-embeddingonly-" + Guid.NewGuid();
+
         private const string RUNBOOK_PATH = "runbooks/wikipedia-35M_expirationtime_runbook.yaml";
         private const string GROUND_TRUTH_FILE_PREFIX_FOR_STEP = "step";
 

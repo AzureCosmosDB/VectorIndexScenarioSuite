@@ -28,21 +28,21 @@ namespace VectorIndexScenarioSuite
         }
     }
 
-    abstract class WikiCohereEmbeddingOnlyBaseSceario : Scenario
+    abstract class EmbeddingOnlyScearioBase : Scenario
     {
-        protected const string BASE_DATA_FILE = "wikipedia_base";
-        protected const string BINARY_FILE_EXT = "fbin";
-        protected const string QUERY_FILE = "wikipedia_query";
-        protected const string PARTITION_KEY_PATH = "/id";
-        protected const string EMBEDDING_COLOUMN = "embedding";
-        protected const string EMBEDDING_PATH = $"/{EMBEDDING_COLOUMN}";
-        protected const VectorDataType EMBEDDING_DATA_TYPE = VectorDataType.Float32;
-        protected const DistanceFunction EMBEDDING_DISTANCE_FUNCTION = DistanceFunction.Cosine;
-        protected const int EMBEDDING_DIMENSIONS = 768;
-        protected const int MAX_PHYSICAL_PARTITION_COUNT = 56;
-
-        private static readonly string RUN_NAME = "wiki-cohere-en-embeddingonly-" + 
-            Guid.NewGuid();
+        protected abstract string BaseDataFile { get; }
+        protected int SliceCount { get; set; }
+        protected abstract string BinaryFileExt { get; }
+        protected abstract string GetGroundTruthFileName { get; }
+        protected abstract string QueryFile { get; }
+        protected abstract string PartitionKeyPath { get; }
+        protected abstract string EmbeddingColumn { get; }
+        protected abstract string EmbeddingPath { get; }
+        protected abstract VectorDataType EmbeddingDataType { get; }
+        protected abstract DistanceFunction EmbeddingDistanceFunction { get; }
+        protected abstract ulong EmbeddingDimensions { get; }
+        protected abstract int MaxPhysicalPartitionCount { get; }
+        protected abstract string RunName { get; }
 
         /* Map 'K' -> Neighbor Results
          * Neighbor Results:
@@ -55,9 +55,11 @@ namespace VectorIndexScenarioSuite
 
         protected ScenarioMetrics ingestionMetrics;
 
-        public WikiCohereEmbeddingOnlyBaseSceario(IConfiguration configurations, int throughPut) : 
+        public EmbeddingOnlyScearioBase(IConfiguration configurations, int throughPut) : 
             base(configurations, throughPut)
-        { 
+        {
+            this.SliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);
+
             this.queryRecallResults = new ConcurrentDictionary<int, ConcurrentDictionary<string, List<IdWithSimilarityScore>>>();
             this.queryMetrics = new ConcurrentDictionary<int, ScenarioMetrics>();
 
@@ -76,22 +78,22 @@ namespace VectorIndexScenarioSuite
         {
             string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
                 throw new ArgumentNullException("AppSettings:dataFilesBasePath");
-            string fileName = $"{QUERY_FILE}.{BINARY_FILE_EXT}";
+            string fileName = $"{this.QueryFile}.{this.BinaryFileExt}";
             return Path.Combine(directory, fileName);
         }
 
         protected override ContainerProperties GetContainerSpec(string containerName)
         {
-            ContainerProperties properties = new ContainerProperties(id: containerName, partitionKeyPath: PARTITION_KEY_PATH)
+            ContainerProperties properties = new ContainerProperties(id: containerName, partitionKeyPath: this.PartitionKeyPath)
             {
                 VectorEmbeddingPolicy = new VectorEmbeddingPolicy(new Collection<Embedding>(new List<Embedding>()
                 {
                     new Embedding()
                     {
-                        Path = EMBEDDING_PATH,
-                        DataType = VectorDataType.Float32,
-                        DistanceFunction = DistanceFunction.DotProduct,
-                        Dimensions = 768,
+                        Path = this.EmbeddingPath,
+                        DataType = this.EmbeddingDataType,
+                        DistanceFunction = this.EmbeddingDistanceFunction,
+                        Dimensions = this.EmbeddingDimensions,
                     }
                 })),
                 IndexingPolicy = new IndexingPolicy()
@@ -100,7 +102,7 @@ namespace VectorIndexScenarioSuite
                     {
                         new VectorIndexPath()
                         {
-                            Path = EMBEDDING_PATH,
+                            Path = this.EmbeddingPath,
                             Type = VectorIndexType.DiskANN,
                         }
                     }
@@ -110,7 +112,7 @@ namespace VectorIndexScenarioSuite
             properties.IndexingPolicy.IncludedPaths.Add(new IncludedPath{ Path = "/" });
 
             // Add EMBEDDING_PATH to excluded paths for scalar indexing.
-            properties.IndexingPolicy.ExcludedPaths.Add(new ExcludedPath { Path = EMBEDDING_PATH + "/*" });
+            properties.IndexingPolicy.ExcludedPaths.Add(new ExcludedPath { Path = this.EmbeddingPath + "/*" });
 
             return properties;
         }
@@ -145,7 +147,7 @@ namespace VectorIndexScenarioSuite
             List<Task> ingestTasks = new List<Task>(COSMOSDB_MAX_BATCH_SIZE);
             string errorLogBasePath = this.Configurations["AppSettings:errorLogBasePath"] ?? 
                 throw new ArgumentNullException("AppSettings:errorLogBasePath");
-            string logFilePath = Path.Combine(errorLogBasePath, $"{RUN_NAME}-ingest.log");
+            string logFilePath = Path.Combine(errorLogBasePath, $"{this.RunName}-ingest.log");
 
             int totalVectorsIngested = 0;
             await foreach ((int vectorId, float[] vector) in BigANNBinaryFormat.GetBinaryDataAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest))
@@ -225,7 +227,7 @@ namespace VectorIndexScenarioSuite
                     FeedIterator<IdWithSimilarityScore> queryResultSetIterator = 
                         this.CosmosContainer.GetItemQueryIterator<IdWithSimilarityScore>(queryDefinition,
                         // Issue parallel queries to all partitions, capping this to MAX_PHYSICAL_PARTITION_COUNT but can be tuned based on change in setup.
-                        requestOptions: new QueryRequestOptions { MaxConcurrency = (MAX_PHYSICAL_PARTITION_COUNT) });
+                        requestOptions: new QueryRequestOptions { MaxConcurrency = (this.MaxPhysicalPartitionCount) });
 
                     retryQueryOnFailureForLatencyMeasurement = false;
                     while (queryResultSetIterator.HasMoreResults)
@@ -289,8 +291,8 @@ namespace VectorIndexScenarioSuite
 
         private QueryDefinition ConstructQueryDefinition(int K, float[] queryVector)
         {
-            string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{EMBEDDING_COLOUMN}, @vectorEmbedding) AS similarityScore " +
-                $"FROM c ORDER BY VectorDistance(c.{EMBEDDING_COLOUMN}, @vectorEmbedding, false)";
+            string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding) AS similarityScore " +
+                $"FROM c ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false)";
 ;
             return new QueryDefinition(queryText).WithParameter("@vectorEmbedding", queryVector);
         }
@@ -300,9 +302,106 @@ namespace VectorIndexScenarioSuite
             string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
                 throw new ArgumentNullException("AppSettings:dataFilesBasePath");
 
-            // For Streaming scenario, work of the full 35M data file.
-            string fileName = $"{BASE_DATA_FILE}_35000000.{BINARY_FILE_EXT}";
+            
+            string fileName = $"{this.BaseDataFile}_{this.SliceCount}.{this.BinaryFileExt}";
             return Path.Combine(directory, fileName);
+        }
+
+        private string GetGroundTruthDataPath()
+        {
+            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
+                throw new ArgumentNullException("AppSettings:dataFilesBasePath");
+            string fileName = $"{this.GetGroundTruthFileName}_{this.SliceCount}";
+            return Path.Combine(directory, fileName);
+        }
+
+        private void ComputeLatencyAndRUStats(bool runIngestion, bool runQuery)
+        {
+            if(runIngestion)
+            {
+                Console.WriteLine($"Ingestion Metrics:");
+                Console.WriteLine($"RU Consumption: {this.ingestionMetrics.GetRequestUnitStatistics()}");
+            }
+
+            if (runQuery)
+            {
+                Console.WriteLine($"Query Metrics:");
+
+                for(int kI = 0; kI < K_VALS.Length; kI++)
+                {
+                    int kVal = K_VALS[kI];
+                    Console.WriteLine($"K = {kVal}");
+                    ScenarioMetrics metrics = this.queryMetrics[kVal];
+
+                    Console.WriteLine($"RU Consumption: {metrics.GetRequestUnitStatistics()}");
+                    Console.WriteLine($"Client Latency Stats in Milliseconds: [ {metrics.GetClientLatencyStatistics()} ]");
+                    Console.WriteLine($"Server Latency Stats in Milliseconds: [ {metrics.GetServerLatencyStatistics()} ]");
+                }
+            }
+        }
+
+        public override async Task Run()
+        {
+            /* WikiCohereEnglishScenario is a simple scenario with following steps :
+             * 1) Bulk Ingest 'scenario:slice' number of documents into Cosmos container.
+             * 2) Query Cosmos container for a query-set and calculate recall for Nearest Neighbor search.
+             */
+            bool runIngestion = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runIngestion"]);
+
+            if(runIngestion) 
+            {
+                int totalVectors = Convert.ToInt32(this.Configurations["AppSettings:scenario:sliceCount"]);
+                await PerformIngestion(IngestionOperationType.Insert, 0 /* startVectorId */, totalVectors);
+            }
+
+            bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
+
+            if(runQuery)
+            {
+                bool performWarmup = Convert.ToBoolean(this.Configurations["AppSettings:scenario:warmup:enabled"]);
+                if (performWarmup)
+                {
+                    int numWarmupQueries = Convert.ToInt32(this.Configurations["AppSettings:scenario:warmup:numWarmupQueries"]);
+                    Console.WriteLine($"Performing {numWarmupQueries} queries for Warmup.");
+                    await PerformQuery(true /* isWarmup */, numWarmupQueries, 10 /*KVal*/, GetBaseDataPath());
+                }
+
+                int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
+                for (int kI = 0; kI < K_VALS.Length; kI++)
+                {
+                    Console.WriteLine($"Performing {totalQueryVectors} queries for Recall/RU/Latency stats for K: {K_VALS[kI]}.");
+                    await PerformQuery(false /* isWarmup */, totalQueryVectors, K_VALS[kI] /*KVal*/, GetQueryDataPath());
+                }
+            }
+        }
+
+        public override void Stop()
+        {
+            bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
+            bool computeRecall = Convert.ToBoolean(this.Configurations["AppSettings:scenario:computeRecall"]);
+
+            if (runQuery && computeRecall)
+            {
+                Console.WriteLine("Computing Recall.");
+                GroundTruthValidator groundTruthValidator = new GroundTruthValidator(
+                    GroundTruthFileType.Binary,
+                    GetGroundTruthDataPath());
+
+                for (int kI = 0; kI < K_VALS.Length; kI++)
+                {
+                    int kVal = K_VALS[kI];
+                    float recall = groundTruthValidator.ComputeRecall(kVal, this.queryRecallResults[kVal]);
+
+                    Console.WriteLine($"Recall for K = {kVal} is {recall}.");
+                }
+            }
+
+            bool computeLatencyAndRUStats = Convert.ToBoolean(this.Configurations["AppSettings:scenario:computeLatencyAndRUStats"]);
+            if (computeLatencyAndRUStats)
+            {
+                bool runIngestion = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runIngestion"]);
+                ComputeLatencyAndRUStats(runIngestion, runQuery);
+            }
         }
     }
 }
