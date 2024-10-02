@@ -35,6 +35,9 @@ namespace VectorIndexScenarioSuite
         [YamlMember(Alias = "scenario")]
         public RunbookData RunbookData;
 
+        [YamlMember(Alias = "version")]
+        public int Version;
+
         // Default constructor is required for deserialization
         public Runbook()
         {
@@ -56,6 +59,8 @@ namespace VectorIndexScenarioSuite
             var deserializer = new DeserializerBuilder().Build();
 
             var runbook = deserializer.Deserialize<Runbook>(yamlContent);
+
+            Console.WriteLine($"Runbook version: {runbook.Version}");
             return runbook;
         }
     }
