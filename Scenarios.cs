@@ -3,7 +3,8 @@
     internal enum Scenarios
     {
         WikiCohereEnglishEmbeddingOnly,
-        WikiCohereEnglishEmnbeddingOnlyStreaming
+        WikiCohereEnglishEmnbeddingOnlyStreaming,
+        MSTuringEmbeddingOnly
     }
 
     internal static class ScenarioParser
@@ -16,6 +17,8 @@
                     return Scenarios.WikiCohereEnglishEmbeddingOnly;
                 case "wiki-cohere-english-embedding-only-streaming":
                     return Scenarios.WikiCohereEnglishEmnbeddingOnlyStreaming;
+                case "ms-turing-embedding-only":
+                    return Scenarios.MSTuringEmbeddingOnly;
                 default:
                     throw new ArgumentException("Invalid scenario value", scenarioString);
             }
