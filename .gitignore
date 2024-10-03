@@ -35,7 +35,3 @@ msbuild.wrn
 
 # Visual Studio 2015
 .vs/
-
-# ignore it since it contains keys  
-/appSettings.json
-/*.exe

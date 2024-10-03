@@ -32,22 +32,11 @@ namespace VectorIndexScenarioSuite
 
         private static (int, int) ComputeInitialAndFinalThroughput(IConfiguration configurations)
         {
-             // 1) For upto 1M embedding, Collection Create throughput of 400 RU, bumped to 10,000 RU.
-            // 2) For 35M embedding, Collection Create throughput of 40,000 RU, bumped to 70,000 RU.
-            // This is because we want 1 physical partition in scenario 1 and 7 physical partitions in scenario 2 (to reduce query fanout).
-            int sliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);
-            switch (sliceCount)
-            {
-                case HUNDRED_THOUSAND:
-                case ONE_MILLION:
-                    return (400, 10000);
-                case THIRTY_FIVE_MILLION:
-                    return (40000, 70000);
-                case ONE_BILLION:
-                    return (40000, 70000);
-                default:
-                    throw new ArgumentException("Invalid slice count.");
-            }
+            // seting the throughput for the container initially for creation and then bumping it up
+            int init_RU = Convert.ToInt32(configurations["AppSettings:cosmosContainerRUInitial"]);
+            int final_RU = Convert.ToInt32(configurations["AppSettings:cosmosContainerRUInitial"]);
+
+            return (init_RU, final_RU);
         }
     }
 }
