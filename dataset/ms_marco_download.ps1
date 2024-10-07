@@ -82,12 +82,12 @@ function CreateSlice {
 
 # Generate 1M Slice
 $new1MSlicePath = Join-Path $destinationFolder "base_1000000.fbin"
-CreateSlice -$basePath $newBasePath -newSliceBasePath $new1MSlicePath -numVectors 1000000
+CreateSlice -basePath $newBasePath -newSliceBasePath $new1MSlicePath -numVectors 1000000
 
 # Generate 10M Slice
 $new10MSlicePath = Join-Path $destinationFolder "base_10000000.fbin"
-CreateSlice -$basePath $newBasePath -newSliceBasePath $new10MSlicePath -numVectors 10000000
+CreateSlice -basePath $newBasePath -newSliceBasePath $new10MSlicePath -numVectors 10000000
 
 # Generate 100M Slice
 $new10MSlicePath = Join-Path $destinationFolder "base_100000000.fbin"
-CreateSlice -$basePath $newBasePath -newSliceBasePath $new10MSlicePath -numVectors 100000000
+CreateSlice -basePath $newBasePath -newSliceBasePath $new10MSlicePath -numVectors 100000000
