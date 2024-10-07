@@ -42,6 +42,7 @@ namespace VectorIndexScenarioSuite
         /* Known Slices */
         protected const int HUNDRED_THOUSAND = 100000;
         protected const int ONE_MILLION =  1000000;
+        protected const int TEN_MILLION = 10000000;
         protected const int THIRTY_FIVE_MILLION = 35000000;
         protected const int ONE_HUNDRED_MILLION = 100000000;
 
@@ -69,8 +70,17 @@ namespace VectorIndexScenarioSuite
 
         protected abstract ContainerProperties GetContainerSpec(string containerName);
 
+
+
         protected Container CreateOrGetCollection(int throughput, bool bulkClient)
         {
+            string init_RU = this.Configurations["AppSettings:cosmosContainerRUInitial"] ?? throw new ArgumentNullException("cosmosContainerRUInitial");
+            int init_RUValue = Convert.ToInt32(init_RU);
+            if (init_RUValue>0)
+            {
+                throughput = init_RUValue; // override the throughput value from the config file
+            }
+
             string containerId =
                 this.Configurations["AppSettings:cosmosContainerId"] ?? throw new ArgumentNullException("cosmosContainerId");
             CosmosClient cosmosClient = CreateCosmosClient(bulkClient);
@@ -80,6 +90,17 @@ namespace VectorIndexScenarioSuite
             Container container = database.CreateContainerIfNotExistsAsync(containerProperties, throughput).Result;
 
             return container;
+        }
+
+        protected async void replaceFinalThroughput(int throughput)
+        {
+            string final_RU = this.Configurations["AppSettings:cosmosContainerRUFinal"] ?? throw new ArgumentNullException("cosmosContainerRUFinal");
+            int final_RUValue = Convert.ToInt32(final_RU);
+            if (final_RUValue > 0)
+            {
+                throughput = final_RUValue; // override the throughput value from the config file
+            }
+            await this.CosmosContainer.ReplaceThroughputAsync(throughput);
         }
 
         protected async Task LogErrorToFile(string filePath, string message)

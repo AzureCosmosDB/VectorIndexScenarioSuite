@@ -23,7 +23,7 @@ if (-not $azcopyPath) {
 $destinationFolder = Resolve-Path -Path $destinationFolder
 $azcopyPath = Resolve-Path -Path $azcopyPath
 $env:PATH += ";$azcopyPath"
-
+$newBasePath = Join-Path $destinationFolder "base_100000000.fbin"
 if (-not $skipDownload)
 {
     #Pre-computed ground truth file for 1M, 10M and 100M vectors.
@@ -51,7 +51,7 @@ if (-not $skipDownload)
     # Base Dataset
     azcopy copy "https://msmarco.z22.web.core.windows.net/msmarcowebsearch/vectors/SimANS/passage_vectors/vectors.bin" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
     $tempBasePath = Join-Path $destinationFolder "vectors.bin"
-    $newBasePath = Join-Path $destinationFolder "base.bin"
+    $newBasePath = Join-Path $destinationFolder "base_100000000"
     Rename-Item -Path $tempBasePath -NewName $newBasePath
 }
 
@@ -87,7 +87,3 @@ CreateSlice -basePath $newBasePath -newSliceBasePath $new1MSlicePath -numVectors
 # Generate 10M Slice
 $new10MSlicePath = Join-Path $destinationFolder "base_10000000.fbin"
 CreateSlice -basePath $newBasePath -newSliceBasePath $new10MSlicePath -numVectors 10000000
-
-# Generate 100M Slice
-$new10MSlicePath = Join-Path $destinationFolder "base_100000000.fbin"
-CreateSlice -basePath $newBasePath -newSliceBasePath $new10MSlicePath -numVectors 100000000

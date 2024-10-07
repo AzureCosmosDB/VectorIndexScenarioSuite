@@ -13,12 +13,10 @@ namespace VectorIndexScenarioSuite
 {
     internal class EmbeddingOnlyDocument
     {
-        // This should be the same as the PARTITION_KEY_PATH in the WikiCohereEnglishEmbeddingOnlyScenario.
-        [JsonProperty(PropertyName = "id")]
+         [JsonProperty(PropertyName = "id")]
         public string Id { get; }
 
-        // This should be the same as the EMBEDDING_PATH in the WikiCohereEnglishEmbeddingOnlyScenario.
-        [JsonProperty(PropertyName = "embedding")]
+         [JsonProperty(PropertyName = "embedding")]
         private float[] Embedding { get; }
 
         public EmbeddingOnlyDocument(string id, float[] embedding)
@@ -44,7 +42,6 @@ namespace VectorIndexScenarioSuite
         protected abstract int MaxPhysicalPartitionCount { get; }
         protected abstract string RunName { get; }
         protected static Guid guid = Guid.NewGuid();
-
         /* Map 'K' -> Neighbor Results
          * Neighbor Results:
          * Map 'QueryId' -> List of neighbor IdWithSimilarityScore
@@ -60,7 +57,6 @@ namespace VectorIndexScenarioSuite
             base(configurations, throughPut)
         {
             this.SliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);
-
             this.queryRecallResults = new ConcurrentDictionary<int, ConcurrentDictionary<string, List<IdWithSimilarityScore>>>();
             this.queryMetrics = new ConcurrentDictionary<int, ScenarioMetrics>();
 
@@ -343,7 +339,7 @@ namespace VectorIndexScenarioSuite
 
         public override async Task Run()
         {
-            /* WikiCohereEnglishScenario is a simple scenario with following steps :
+            /* Default with following steps :
              * 1) Bulk Ingest 'scenario:slice' number of documents into Cosmos container.
              * 2) Query Cosmos container for a query-set and calculate recall for Nearest Neighbor search.
              */

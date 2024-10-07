@@ -18,22 +18,31 @@ namespace VectorIndexScenarioSuite
         protected override string RunName => "msturing-embeddingonly-" + guid;
 
         public MSTuringEmbeddingOnlyScenario(IConfiguration configurations) : 
-            base(configurations, ComputeInitialAndFinalThroughput(configurations).Item1)
+            base(configurations, defaultInitialAndFinalThroughput(configurations).Item1)
         {
         }
 
         public override void Setup()
         {
-            this.CosmosContainer.ReplaceThroughputAsync(ComputeInitialAndFinalThroughput(this.Configurations).Item2).Wait();
+            this.CosmosContainer.ReplaceThroughputAsync(defaultInitialAndFinalThroughput(this.Configurations).Item2).Wait();
         }
 
-        private static (int, int) ComputeInitialAndFinalThroughput(IConfiguration configurations)
+        private static (int, int) defaultInitialAndFinalThroughput(IConfiguration configurations)
         {
-            // seting the throughput for the container initially for creation and then bumping it up
-            int init_RU = Convert.ToInt32(configurations["AppSettings:cosmosContainerRUInitial"]);
-            int final_RU = Convert.ToInt32(configurations["AppSettings:cosmosContainerRUInitial"]);
-
-            return (init_RU, final_RU);
+            // default throughput for MSTuringEmbeddingOnlyScenario
+            int sliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);
+            switch (sliceCount)
+            {
+                case HUNDRED_THOUSAND:
+                case ONE_MILLION:
+                    return (6000, 10000);
+                case TEN_MILLION:
+                    return (12000, 20000);
+                case ONE_HUNDRED_MILLION:
+                    return (48000, 80000);
+                default:
+                    throw new ArgumentException("Invalid slice count.");
+            }
         }
     }
 }

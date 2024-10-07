@@ -44,9 +44,14 @@ if (-not $skipDownload)
     $new100MPath = Join-Path $destinationFolder "ground_truth_100000000"
     Rename-Item -Path $temp100MPath -NewName $new100MPath
 
+    azcopy copy "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/query_gt100.bin" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
+    $temp1000MPath = Join-Path $destinationFolder "msturing-gt-1000M"
+    $new1000MPath = Join-Path $destinationFolder "ground_truth_1000000000"
+    Rename-Item -Path $temp100MPath -NewName $new100MPath
+
     # Query file
-    azcopy copy "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/testQuery10K.fbin" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
-    $tempQueryPath = Join-Path $destinationFolder "testQuery10K.fbin"
+    azcopy copy "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/query100K.fbin" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
+    $tempQueryPath = Join-Path $destinationFolder "query100K.fbin"
     $newQueryPath = Join-Path $destinationFolder "query.fbin"
     Rename-Item -Path $tempQueryPath -NewName $newQueryPath
 
@@ -57,7 +62,6 @@ if (-not $skipDownload)
     Rename-Item -Path $tempBasePath -NewName $newBasePath
 }
 
-# Generate 100K and 1M slices from base file. Do this in streaming mode to avoid loading the entire file into memory.
 # Slices follow the same format as the base file.
 # Base format:
 # First 4 bytes are the number of vectors, next 4 bytes are the dimensions
@@ -94,7 +98,6 @@ CreateSlice -basePath $newBasePath -newSliceBasePath $new1MSlicePath -numVectors
 # Generate 10M Slice
 $new10MSlicePath = Join-Path $destinationFolder "base_10000000.fbin"
 CreateSlice -basePath $newBasePath -newSliceBasePath $new10MSlicePath -numVectors 10000000
-
 # Generate 100M Slice
-$new10MSlicePath = Join-Path $destinationFolder "base_100000000.fbin"
-CreateSlice -basePath $newBasePath -newSliceBasePath $new10MSlicePath -numVectors 100000000
+$new100MSlicePath = Join-Path $destinationFolder "base_100000000.fbin"
+CreateSlice -basePath $newBasePath -newSliceBasePath $new100MSlicePath -numVectors 100000000
