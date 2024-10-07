@@ -6,8 +6,8 @@ namespace VectorIndexScenarioSuite
     {
         protected override string BaseDataFile => "base";
         protected override string BinaryFileExt => "fbin";
-        protected override string QueryFile => "query10k";
-        protected override string GetGroundTruthFileName => "msturing-gt";
+        protected override string QueryFile => "query";
+        protected override string GetGroundTruthFileName => "ground_truth";
         protected override string PartitionKeyPath => "/id";
         protected override string EmbeddingColumn => "embedding";
         protected override string EmbeddingPath => $"/{EmbeddingColumn}";
@@ -15,7 +15,7 @@ namespace VectorIndexScenarioSuite
         protected override DistanceFunction EmbeddingDistanceFunction => DistanceFunction.Euclidean;
         protected override ulong EmbeddingDimensions => 100;
         protected override int MaxPhysicalPartitionCount => 56;
-        protected override string RunName => "msturing-embeddingonly-" + Guid.NewGuid();
+        protected override string RunName => "msmarco-embeddingonly-" + guid;
 
 
  

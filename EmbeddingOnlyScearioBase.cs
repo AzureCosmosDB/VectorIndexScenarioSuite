@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace VectorIndexScenarioSuite
 {
-    internal class WikiCohereEmbeddingOnlyDocument
+    internal class EmbeddingOnlyDocument
     {
         // This should be the same as the PARTITION_KEY_PATH in the WikiCohereEnglishEmbeddingOnlyScenario.
         [JsonProperty(PropertyName = "id")]
@@ -21,7 +21,7 @@ namespace VectorIndexScenarioSuite
         [JsonProperty(PropertyName = "embedding")]
         private float[] Embedding { get; }
 
-        public WikiCohereEmbeddingOnlyDocument(string id, float[] embedding)
+        public EmbeddingOnlyDocument(string id, float[] embedding)
         {
             this.Id = id;
             this.Embedding = embedding;
@@ -43,6 +43,7 @@ namespace VectorIndexScenarioSuite
         protected abstract ulong EmbeddingDimensions { get; }
         protected abstract int MaxPhysicalPartitionCount { get; }
         protected abstract string RunName { get; }
+        protected static Guid guid = Guid.NewGuid();
 
         /* Map 'K' -> Neighbor Results
          * Neighbor Results:
@@ -191,15 +192,15 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        private Task<ItemResponse<WikiCohereEmbeddingOnlyDocument>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, int vectorId, float[] vector)
+        private Task<ItemResponse<EmbeddingOnlyDocument>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, int vectorId, float[] vector)
         {
             switch (ingestionOperationType)
             {
                 case IngestionOperationType.Insert:
-                    return this.CosmosContainerWithBulkClient.CreateItemAsync<WikiCohereEmbeddingOnlyDocument>(
-                        new WikiCohereEmbeddingOnlyDocument(vectorId.ToString(), vector), new PartitionKey(vectorId.ToString()));
+                    return this.CosmosContainerWithBulkClient.CreateItemAsync<EmbeddingOnlyDocument>(
+                        new EmbeddingOnlyDocument(vectorId.ToString(), vector), new PartitionKey(vectorId.ToString()));
                 case IngestionOperationType.Delete:
-                    return this.CosmosContainerWithBulkClient.DeleteItemAsync<WikiCohereEmbeddingOnlyDocument>(
+                    return this.CosmosContainerWithBulkClient.DeleteItemAsync<EmbeddingOnlyDocument>(
                         vectorId.ToString(), new PartitionKey(vectorId.ToString()));
                 case IngestionOperationType.Replace:
                     // This needs APIs to be further enhanced before we support it.

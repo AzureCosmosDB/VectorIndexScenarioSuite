@@ -3,21 +3,10 @@ using Microsoft.Extensions.Configuration;
 
 namespace VectorIndexScenarioSuite
 {
-    internal class WikiCohereEnglishEmbeddingOnlyStreamingScenario : EmbeddingOnlyScearioBase
+    internal class WikiCohereEnglishEmbeddingOnlyStreamingScenario : WikiCohereEnglishEmbeddingOnlyScenario
     {
-        protected override string BaseDataFile => "wikipedia_base";
-        protected override string BinaryFileExt => "fbin";
-        protected override string QueryFile => "wikipedia_query";
-        protected override string GetGroundTruthFileName => "wikipedia_truth";
-        protected override string PartitionKeyPath => "/id";
-        protected override string EmbeddingColumn => "embedding";
-        protected override string EmbeddingPath => $"/{EmbeddingColumn}";
-        protected override VectorDataType EmbeddingDataType => VectorDataType.Float32;
-        protected override DistanceFunction EmbeddingDistanceFunction => DistanceFunction.Cosine;
-        protected override ulong EmbeddingDimensions => 768;
-        protected override int MaxPhysicalPartitionCount => 56;
-        protected override string RunName => "wiki-cohere-en-embeddingonly-" + Guid.NewGuid();
-
+       
+        protected override string RunName => "wiki-cohere-english-embedding-only-streaming-" + guid;
         private const string RUNBOOK_PATH = "runbooks/wikipedia-35M_expirationtime_runbook.yaml";
         private const string GROUND_TRUTH_FILE_PREFIX_FOR_STEP = "step";
 
@@ -25,7 +14,7 @@ namespace VectorIndexScenarioSuite
         private const string GROUND_TRUTH_FILE_EXTENSION_FOR_STEP = ".gt100";
 
         public WikiCohereEnglishEmbeddingOnlyStreamingScenario(IConfiguration configurations) : 
-            base(configurations, ComputeInitialAndFinalThroughput(configurations).Item1)
+            base(configurations)
         { }
 
         public override void Setup()

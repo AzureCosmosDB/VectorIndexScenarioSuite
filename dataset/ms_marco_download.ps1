@@ -29,17 +29,17 @@ if (-not $skipDownload)
     #Pre-computed ground truth file for 1M, 10M and 100M vectors.
     azcopy copy "https://comp21storage.z5.web.core.windows.net/msmarcowebsearch/msmarco-1M-gt100" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
     $temp1MPath = Join-Path $destinationFolder "msmarco-1M-gt100"
-    $new1MPath = Join-Path $destinationFolder "msmarco-1M-gt100"
+    $new1MPath = Join-Path $destinationFolder "ground_truth_1000000"
     Rename-Item -Path $temp1MPath -NewName $new1MPath
 
     azcopy copy "https://comp21storage.z5.web.core.windows.net/msmarcowebsearch/msmarco-10M-gt100" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
     $temp10MPath = Join-Path $destinationFolder "msmarco-10M-gt100"
-    $new10MPath = Join-Path $destinationFolder "msmarco-10M-gt100"
+    $new10MPath = Join-Path $destinationFolder "ground_truth_10000000"
     Rename-Item -Path $temp10MPath -NewName $new10MPath
 
     azcopy copy "https://comp21storage.z5.web.core.windows.net/msmarcowebsearch/msmarco-100M-gt100" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
     $temp100MPath = Join-Path $destinationFolder "msmarco-100M-gt100"
-    $new100MPath = Join-Path $destinationFolder "msmarco-100M-gt100"
+    $new100MPath = Join-Path $destinationFolder "ground_truth_100000000"
     Rename-Item -Path $temp100MPath -NewName $new100MPath
 
     # Query file
@@ -51,23 +51,18 @@ if (-not $skipDownload)
     # Base Dataset
     azcopy copy "https://msmarco.z22.web.core.windows.net/msmarcowebsearch/vectors/SimANS/passage_vectors/vectors.bin" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
     $tempBasePath = Join-Path $destinationFolder "vectors.bin"
-    $newBasePath = Join-Path $destinationFolder "vectors.bin"
+    $newBasePath = Join-Path $destinationFolder "base.bin"
     Rename-Item -Path $tempBasePath -NewName $newBasePath
 }
 
-# Generate 100K and 1M slices from base file. Do this in streaming mode to avoid loading the entire file into memory.
-# Slices follow the same format as the base file.
-# Base format:
-# First 4 bytes are the number of vectors, next 4 bytes are the dimensions
-# Rest of the file is the vectors
 function CreateSlice {
     param (
-        [string]$new35MPath,
+        [string]$basePath,
         [string]$newSliceBasePath,
         [int]$numVectors
     )
 
-    $stream = [System.IO.File]::OpenRead($new35MPath)
+    $stream = [System.IO.File]::OpenRead($basePath)
     $reader = New-Object System.IO.BinaryReader($stream)
     $writer = New-Object System.IO.BinaryWriter([System.IO.File]::Create($newSliceBasePath))
 
@@ -87,8 +82,12 @@ function CreateSlice {
 
 # Generate 1M Slice
 $new1MSlicePath = Join-Path $destinationFolder "base_1000000.fbin"
-CreateSlice -new35MPath $new35MPath -newSliceBasePath $new1MSlicePath -numVectors 1000000
+CreateSlice -$basePath $newBasePath -newSliceBasePath $new1MSlicePath -numVectors 1000000
 
 # Generate 10M Slice
-$new1MSlicePath = Join-Path $destinationFolder "base_10000000.fbin"
-CreateSlice -new35MPath $new35MPath -newSliceBasePath $new1MSlicePath -numVectors 10000000
+$new10MSlicePath = Join-Path $destinationFolder "base_10000000.fbin"
+CreateSlice -$basePath $newBasePath -newSliceBasePath $new10MSlicePath -numVectors 10000000
+
+# Generate 100M Slice
+$new10MSlicePath = Join-Path $destinationFolder "base_100000000.fbin"
+CreateSlice -$basePath $newBasePath -newSliceBasePath $new10MSlicePath -numVectors 100000000

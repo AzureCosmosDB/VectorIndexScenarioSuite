@@ -15,10 +15,7 @@ namespace VectorIndexScenarioSuite
         protected override DistanceFunction EmbeddingDistanceFunction => DistanceFunction.Cosine;
         protected override ulong EmbeddingDimensions => 768;
         protected override int MaxPhysicalPartitionCount => 56;
-        protected override string RunName => "wiki-cohere-en-embeddingonly-" + Guid.NewGuid();
-
-
- 
+        protected override string RunName => "wiki-cohere-en-embeddingonly-" + guid;
 
         public WikiCohereEnglishEmbeddingOnlyScenario(IConfiguration configurations) : 
             base(configurations, ComputeInitialAndFinalThroughput(configurations).Item1)
