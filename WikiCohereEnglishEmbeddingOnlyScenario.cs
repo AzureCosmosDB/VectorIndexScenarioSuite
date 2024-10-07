@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Configuration;
 namespace VectorIndexScenarioSuite
 { 
-    internal class WikiCohereEnglishEmbeddingOnlyScenario : EmbeddingOnlyScearioBase
+    internal class WikiCohereEnglishEmbeddingOnlyScenario : BigANNBinaryEmbeddingOnlyScearioBase
     {
         protected override string BaseDataFile => "wikipedia_base";
         protected override string BinaryFileExt => "fbin";

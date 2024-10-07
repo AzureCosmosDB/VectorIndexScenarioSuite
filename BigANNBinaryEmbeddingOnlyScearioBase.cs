@@ -28,7 +28,7 @@ namespace VectorIndexScenarioSuite
         }
     }
 
-    abstract class EmbeddingOnlyScearioBase : Scenario
+    abstract class BigANNBinaryEmbeddingOnlyScearioBase : Scenario
     {
         protected abstract string BaseDataFile { get; }
         protected int SliceCount { get; set; }
@@ -56,7 +56,7 @@ namespace VectorIndexScenarioSuite
 
         protected ScenarioMetrics ingestionMetrics;
 
-        public EmbeddingOnlyScearioBase(IConfiguration configurations, int throughPut) : 
+        public BigANNBinaryEmbeddingOnlyScearioBase(IConfiguration configurations, int throughPut) : 
             base(configurations, throughPut)
         {
             this.SliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);
