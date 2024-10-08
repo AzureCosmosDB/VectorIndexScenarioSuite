@@ -14,12 +14,12 @@ namespace VectorIndexScenarioSuite
         private const string GROUND_TRUTH_FILE_EXTENSION_FOR_STEP = ".gt100";
 
         public WikiCohereEnglishEmbeddingOnlyStreamingScenario(IConfiguration configurations) : 
-            base(configurations, defaultInitialAndFinalThroughput(configurations).Item1)
+            base(configurations, DefaultInitialAndFinalThroughput(configurations).Item1)
         { }
 
         public override void Setup()
         {
-            this.replaceFinalThroughput(defaultInitialAndFinalThroughput(this.Configurations).Item2);
+            this.ReplaceFinalThroughput(DefaultInitialAndFinalThroughput(this.Configurations).Item2);
         }
 
         public override async Task Run()
@@ -142,7 +142,7 @@ namespace VectorIndexScenarioSuite
             return Path.Combine(directory, fileName);
         }
 
-        private static (int, int) defaultInitialAndFinalThroughput(IConfiguration configurations)
+        private static (int, int) DefaultInitialAndFinalThroughput(IConfiguration configurations)
         {
             // Setup the scenario with 10physical partitions and 100K RU/s.
             // Partition count = ceil(RUs / 6000)

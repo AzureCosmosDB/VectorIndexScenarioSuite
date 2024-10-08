@@ -70,13 +70,11 @@ namespace VectorIndexScenarioSuite
 
         protected abstract ContainerProperties GetContainerSpec(string containerName);
 
-
-
         protected Container CreateOrGetCollection(int throughput, bool bulkClient)
         {
             string init_RU = this.Configurations["AppSettings:cosmosContainerRUInitial"] ?? throw new ArgumentNullException("cosmosContainerRUInitial");
             int init_RUValue = Convert.ToInt32(init_RU);
-            if (init_RUValue>0)
+            if (init_RUValue > 0)
             {
                 throughput = init_RUValue; // override the throughput value from the config file
             }
@@ -92,7 +90,7 @@ namespace VectorIndexScenarioSuite
             return container;
         }
 
-        protected async void replaceFinalThroughput(int throughput)
+        protected async void ReplaceFinalThroughput(int throughput)
         {
             string final_RU = this.Configurations["AppSettings:cosmosContainerRUFinal"] ?? throw new ArgumentNullException("cosmosContainerRUFinal");
             int final_RUValue = Convert.ToInt32(final_RU);

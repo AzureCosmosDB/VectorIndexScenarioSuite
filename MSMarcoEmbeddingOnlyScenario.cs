@@ -18,16 +18,16 @@ namespace VectorIndexScenarioSuite
         protected override string RunName => "msmarco-embeddingonly-" + guid;
 
         public MSMarcoEmbeddingOnlyScenario(IConfiguration configurations) : 
-            base(configurations, defaultInitialAndFinalThroughput(configurations).Item1)
+            base(configurations, DefaultInitialAndFinalThroughput(configurations).Item1)
         {
         }
 
         public override void Setup()
         {
-            this.replaceFinalThroughput(defaultInitialAndFinalThroughput(this.Configurations).Item2);
+            this.ReplaceFinalThroughput(DefaultInitialAndFinalThroughput(this.Configurations).Item2);
         }
 
-        private static (int, int) defaultInitialAndFinalThroughput(IConfiguration configurations)
+        private static (int, int) DefaultInitialAndFinalThroughput(IConfiguration configurations)
         {
             // default throughput for MSMarcoEmbeddingOnlyScenario
             int sliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);

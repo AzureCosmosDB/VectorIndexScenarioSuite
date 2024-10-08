@@ -7,16 +7,16 @@ namespace VectorIndexScenarioSuite
         protected override string RunName => "wiki-cohere-en-embeddingonly-" + guid;
 
         public WikiCohereEnglishEmbeddingOnlyScenario(IConfiguration configurations) : 
-            base(configurations, defaultInitialAndFinalThroughput(configurations).Item1)
+            base(configurations, DefaultInitialAndFinalThroughput(configurations).Item1)
         {
         }
 
         public override void Setup()
         {
-            this.replaceFinalThroughput(defaultInitialAndFinalThroughput(this.Configurations).Item2);
+            this.ReplaceFinalThroughput(DefaultInitialAndFinalThroughput(this.Configurations).Item2);
         }
 
-        private static (int, int) defaultInitialAndFinalThroughput(IConfiguration configurations)
+        private static (int, int) DefaultInitialAndFinalThroughput(IConfiguration configurations)
         {
 
 

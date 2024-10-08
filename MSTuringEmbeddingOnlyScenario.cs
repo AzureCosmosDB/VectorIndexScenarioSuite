@@ -18,16 +18,16 @@ namespace VectorIndexScenarioSuite
         protected override string RunName => "msturing-embeddingonly-" + guid;
 
         public MSTuringEmbeddingOnlyScenario(IConfiguration configurations) : 
-            base(configurations, defaultInitialAndFinalThroughput(configurations).Item1)
+            base(configurations, DefaultInitialAndFinalThroughput(configurations).Item1)
         {
         }
 
         public override void Setup()
         {
-            this.CosmosContainer.ReplaceThroughputAsync(defaultInitialAndFinalThroughput(this.Configurations).Item2).Wait();
+            this.ReplaceFinalThroughput(DefaultInitialAndFinalThroughput(this.Configurations).Item2).Wait();
         }
 
-        private static (int, int) defaultInitialAndFinalThroughput(IConfiguration configurations)
+        private static (int, int) DefaultInitialAndFinalThroughput(IConfiguration configurations)
         {
             // default throughput for MSTuringEmbeddingOnlyScenario
             int sliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);
