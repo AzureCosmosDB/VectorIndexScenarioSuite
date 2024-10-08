@@ -24,7 +24,7 @@ namespace VectorIndexScenarioSuite
 
         public override void Setup()
         {
-            this.ReplaceFinalThroughput(DefaultInitialAndFinalThroughput(this.Configurations).Item2).Wait();
+            this.ReplaceFinalThroughput(DefaultInitialAndFinalThroughput(this.Configurations).Item2);
         }
 
         private static (int, int) DefaultInitialAndFinalThroughput(IConfiguration configurations)

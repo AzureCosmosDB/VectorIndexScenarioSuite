@@ -98,6 +98,7 @@ CreateSlice -basePath $newBasePath -newSliceBasePath $new1MSlicePath -numVectors
 # Generate 10M Slice
 $new10MSlicePath = Join-Path $destinationFolder "base_10000000.fbin"
 CreateSlice -basePath $newBasePath -newSliceBasePath $new10MSlicePath -numVectors 10000000
+
 # Generate 100M Slice
 $new100MSlicePath = Join-Path $destinationFolder "base_100000000.fbin"
 CreateSlice -basePath $newBasePath -newSliceBasePath $new100MSlicePath -numVectors 100000000

@@ -5,7 +5,6 @@ namespace VectorIndexScenarioSuite
 {
     internal class WikiCohereEnglishEmbeddingOnlyStreamingScenario : WikiCohereEnglishEmbeddingBase
     {
-       
         protected override string RunName => "wiki-cohere-english-embedding-only-streaming-" + guid;
         private const string RUNBOOK_PATH = "runbooks/wikipedia-35M_expirationtime_runbook.yaml";
         private const string GROUND_TRUTH_FILE_PREFIX_FOR_STEP = "step";
