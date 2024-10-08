@@ -2,6 +2,8 @@
 {
     internal enum Scenarios
     {
+        MSMarcoEmbeddingOnly,
+        MSTuringEmbeddingOnly,
         WikiCohereEnglishEmbeddingOnly,
         WikiCohereEnglishEmnbeddingOnlyStreaming
     }
@@ -12,6 +14,10 @@
         {
             switch (scenarioString.Trim().ToLower())
             {
+                case "ms-marco-embedding-only":
+                    return Scenarios.MSMarcoEmbeddingOnly;
+                case "ms-turing-embedding-only":
+                    return Scenarios.MSTuringEmbeddingOnly;
                 case "wiki-cohere-english-embedding-only":
                     return Scenarios.WikiCohereEnglishEmbeddingOnly;
                 case "wiki-cohere-english-embedding-only-streaming":

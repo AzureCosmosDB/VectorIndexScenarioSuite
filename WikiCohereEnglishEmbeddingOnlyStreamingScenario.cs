@@ -1,9 +1,11 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Azure.Cosmos;
+using Microsoft.Extensions.Configuration;
 
 namespace VectorIndexScenarioSuite
 {
-    internal class WikiCohereEnglishEmbeddingOnlyStreamingScenario : WikiCohereEmbeddingOnlyBaseSceario
+    internal class WikiCohereEnglishEmbeddingOnlyStreamingScenario : WikiCohereEnglishEmbeddingBase
     {
+        protected override string RunName => "wiki-cohere-english-embedding-only-streaming-" + guid;
         private const string RUNBOOK_PATH = "runbooks/wikipedia-35M_expirationtime_runbook.yaml";
         private const string GROUND_TRUTH_FILE_PREFIX_FOR_STEP = "step";
 
@@ -11,12 +13,12 @@ namespace VectorIndexScenarioSuite
         private const string GROUND_TRUTH_FILE_EXTENSION_FOR_STEP = ".gt100";
 
         public WikiCohereEnglishEmbeddingOnlyStreamingScenario(IConfiguration configurations) : 
-            base(configurations, ComputeInitialAndFinalThroughput(configurations).Item1)
+            base(configurations, DefaultInitialAndFinalThroughput(configurations).Item1)
         { }
 
         public override void Setup()
         {
-            this.CosmosContainer.ReplaceThroughputAsync(ComputeInitialAndFinalThroughput(this.Configurations).Item2).Wait();
+            this.ReplaceFinalThroughput(DefaultInitialAndFinalThroughput(this.Configurations).Item2);
         }
 
         public override async Task Run()
@@ -139,7 +141,7 @@ namespace VectorIndexScenarioSuite
             return Path.Combine(directory, fileName);
         }
 
-        private static (int, int) ComputeInitialAndFinalThroughput(IConfiguration configurations)
+        private static (int, int) DefaultInitialAndFinalThroughput(IConfiguration configurations)
         {
             // Setup the scenario with 10physical partitions and 100K RU/s.
             // Partition count = ceil(RUs / 6000)

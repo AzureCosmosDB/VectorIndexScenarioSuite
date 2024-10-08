@@ -64,6 +64,10 @@ namespace VectorIndexScenarioSuite
 
             switch (scenarios)
             {
+                case Scenarios.MSMarcoEmbeddingOnly:
+                    return new MSMarcoEmbeddingOnlyScenario(configurations);
+                case Scenarios.MSTuringEmbeddingOnly:
+                    return new MSTuringEmbeddingOnlyScenario(configurations);
                 case Scenarios.WikiCohereEnglishEmbeddingOnly:
                     return new WikiCohereEnglishEmbeddingOnlyScenario(configurations);
                 case Scenarios.WikiCohereEnglishEmnbeddingOnlyStreaming:
