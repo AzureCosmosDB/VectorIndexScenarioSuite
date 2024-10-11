@@ -4,8 +4,9 @@
     {
         MSMarcoEmbeddingOnly,
         MSTuringEmbeddingOnly,
+        MSTuringEmbeddingOnlyStreaming,
         WikiCohereEnglishEmbeddingOnly,
-        WikiCohereEnglishEmnbeddingOnlyStreaming
+        WikiCohereEnglishEmbeddingOnlyStreaming
     }
 
     internal static class ScenarioParser
@@ -18,10 +19,12 @@
                     return Scenarios.MSMarcoEmbeddingOnly;
                 case "ms-turing-embedding-only":
                     return Scenarios.MSTuringEmbeddingOnly;
+                case "ms-turing-embedding-only-streaming":
+                    return Scenarios.MSTuringEmbeddingOnlyStreaming;
                 case "wiki-cohere-english-embedding-only":
                     return Scenarios.WikiCohereEnglishEmbeddingOnly;
                 case "wiki-cohere-english-embedding-only-streaming":
-                    return Scenarios.WikiCohereEnglishEmnbeddingOnlyStreaming;
+                    return Scenarios.WikiCohereEnglishEmbeddingOnlyStreaming;
                 default:
                     throw new ArgumentException("Invalid scenario value", scenarioString);
             }
