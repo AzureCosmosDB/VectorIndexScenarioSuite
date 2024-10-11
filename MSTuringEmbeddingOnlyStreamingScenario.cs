@@ -1,8 +1,9 @@
 ﻿using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Configuration;
+
 namespace VectorIndexScenarioSuite
-{ 
-    internal class MSTuringEmbeddingOnlyScenario : BigANNBinaryEmbeddingOnlyScearioBase
+{
+    internal class MSTuringEmbeddingOnlyStreamingScenario : BigANNBinaryEmbeddingOnlyScearioBase
     {
         protected override string BaseDataFile => "base";
         protected override string BinaryFileExt => "fbin";
@@ -15,21 +16,26 @@ namespace VectorIndexScenarioSuite
         protected override DistanceFunction EmbeddingDistanceFunction => DistanceFunction.Euclidean;
         protected override ulong EmbeddingDimensions => 100;
         protected override int MaxPhysicalPartitionCount => 56;
-        protected override string RunName => "msturing-embeddingonly-" + guid;
+        protected override string RunName => "msturing-embeddingonly-streaming" + guid;
 
-        public MSTuringEmbeddingOnlyScenario(IConfiguration configurations) : 
+        public MSTuringEmbeddingOnlyStreamingScenario(IConfiguration configurations) : 
             base(configurations, DefaultInitialAndFinalThroughput(configurations).Item1)
         {
-        }
-
-        public override async Task Run()
-        {
-            await RunScenario();
         }
 
         public override void Setup()
         {
             this.ReplaceFinalThroughput(DefaultInitialAndFinalThroughput(this.Configurations).Item2);
+        }
+
+        public override async Task Run()
+        {
+            await RunStreamingScenario("runbooks/msturing-10M_randomreplace_runbook.yml");
+        }
+
+        public override void Stop()
+        {
+            // No Operation required.
         }
 
         private static (int, int) DefaultInitialAndFinalThroughput(IConfiguration configurations)

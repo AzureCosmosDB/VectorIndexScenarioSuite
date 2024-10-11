@@ -16,6 +16,11 @@ namespace VectorIndexScenarioSuite
             this.ReplaceFinalThroughput(DefaultInitialAndFinalThroughput(this.Configurations).Item2);
         }
 
+        public override async Task Run()
+        {
+            await RunScenario();
+        }
+
         private static (int, int) DefaultInitialAndFinalThroughput(IConfiguration configurations)
         {
 
