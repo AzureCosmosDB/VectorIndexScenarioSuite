@@ -18,8 +18,6 @@ namespace VectorIndexScenarioSuite
 
         private static (int, int) DefaultInitialAndFinalThroughput(IConfiguration configurations)
         {
-
-
             // For wiki-cohere scenario, we are starting with :
             // 1) For upto 1M embedding, Collection Create throughput of 400 RU, bumped to 10,000 RU.
             // 2) For 35M embedding, Collection Create throughput of 40,000 RU, bumped to 70,000 RU.

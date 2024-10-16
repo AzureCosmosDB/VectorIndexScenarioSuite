@@ -12,7 +12,7 @@ namespace VectorIndexScenarioSuite
         protected override string EmbeddingColumn => "embedding";
         protected override string EmbeddingPath => $"/{EmbeddingColumn}";
         protected override VectorDataType EmbeddingDataType => VectorDataType.Float32;
-        protected override DistanceFunction EmbeddingDistanceFunction => DistanceFunction.Cosine;
+        protected override DistanceFunction EmbeddingDistanceFunction => DistanceFunction.DotProduct;
         protected override ulong EmbeddingDimensions => 768;
         protected override int MaxPhysicalPartitionCount => 56;
  
