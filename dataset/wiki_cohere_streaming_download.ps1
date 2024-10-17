@@ -18,7 +18,6 @@ if (-not $azcopyPath) {
     exit 1
 }
 
-$destinationFolder = Resolve-Path -Path $destinationFolder
 $azcopyPath = Resolve-Path -Path $azcopyPath
 $env:PATH += ";$azcopyPath"
 
@@ -27,12 +26,25 @@ $InformationPreference = 'Continue'
 
 Write-Information "Starting download..."
 
+# loop from 1 to 260 for all steps.
+# Note that Ground truth files are not available for all steps but only for 'Search' steps. To simplify the script, we iterate over all steps anyways and fail silently if the file is not found.
+$destinationFolder = $destinationFolder + "\wikipedia-1M_expirationtime_runbook.yaml"
+$destinationFolder = Resolve-Path -Path $destinationFolder
+for ($i=1; $i -le 260; $i++)
+{
+    # handle 404 error with azcopy (do not log error)
+    $outputIgnore = azcopy copy "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/wikipedia-1M_expirationtime_runbook.yaml/step$i.gt100" $destinationFolder --from-to BlobLocal --check-md5 NoCheck 2>&1
+    
+    Write-Information "Done with step $i."
+}
+
 # loop from 1 to 1001 for all steps defined in runbook here : https://github.com/harsha-simhadri/big-ann-benchmarks/blob/main/neurips23/streaming/wikipedia-35M_expirationtime_runbook.yaml
 # Note that Ground truth files are not available for all steps but only for 'Search' steps. To simplify the script, we iterate over all steps anyways and fail silently if the file is not found.
+$destinationFolder = $destinationFolder + "\wikipedia-35M_expirationtime_runbook.yaml"
 for ($i=1; $i -le 1001; $i++)
 {
     # handle 404 error with azcopy (do not log error)
-    $outputIgnore = azcopy copy "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/wikipedia-35M_expirationtime_runbook.yaml/step$i.gt100" $destinationFolder --from-to BlobLocal --check-md5 NoCheck 2>&1     
+    $outputIgnore = azcopy copy "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/wikipedia-35M_expirationtime_runbook.yaml/step$i.gt100" $destinationFolder --from-to BlobLocal --check-md5 NoCheck 2>&1
     
     Write-Information "Done with step $i."
 }
