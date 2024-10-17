@@ -29,34 +29,34 @@ write-host "Destination folder: $newBasePath"
 if (-not $skipDownload)
 {
     # Ground Truth files
-    azcopy copy "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/msturing-gt-1M" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
+    azcopy copy "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/msturing-gt-1M" $destinationFolder --from-to BlobLocal 
     $temp1MPath = Join-Path $destinationFolder "msturing-gt-1M"
     $new1MPath = Join-Path $destinationFolder "ground_truth_1000000"
     Rename-Item -Path $temp1MPath -NewName $new1MPath
 
-    azcopy copy "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/msturing-gt-10M" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
+    azcopy copy "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/msturing-gt-10M" $destinationFolder --from-to BlobLocal 
     $temp10MPath = Join-Path $destinationFolder "msturing-gt-10M"
     $new10MPath = Join-Path $destinationFolder "ground_truth_10000000"
     Rename-Item -Path $temp10MPath -NewName $new10MPath
 
-    azcopy copy "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/msturing-gt-100M" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
+    azcopy copy "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/msturing-gt-100M" $destinationFolder --from-to BlobLocal 
     $temp100MPath = Join-Path $destinationFolder "msturing-gt-100M"
     $new100MPath = Join-Path $destinationFolder "ground_truth_100000000"
     Rename-Item -Path $temp100MPath -NewName $new100MPath
 
-    azcopy copy "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/query_gt100.bin" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
-    $temp1000MPath = Join-Path $destinationFolder "msturing-gt-1000M"
+    azcopy copy "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/query_gt100.bin" $destinationFolder --from-to BlobLocal 
+    $temp1000MPath = Join-Path $destinationFolder "query_gt100.bin"
     $new1000MPath = Join-Path $destinationFolder "ground_truth_1000000000"
     Rename-Item -Path $temp100MPath -NewName $new100MPath
 
     # Query file
-    azcopy copy "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/query100K.fbin" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
+    azcopy copy "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/query100K.fbin" $destinationFolder --from-to BlobLocal 
     $tempQueryPath = Join-Path $destinationFolder "query100K.fbin"
     $newQueryPath = Join-Path $destinationFolder "query.fbin"
     Rename-Item -Path $tempQueryPath -NewName $newQueryPath
 
     # Base Dataset
-    azcopy copy "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/base1b.fbin" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
+    azcopy copy "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/base1b.fbin" $destinationFolder --from-to BlobLocal 
     $tempBasePath = Join-Path $destinationFolder "base1b.fbin"
     $newBasePath = Join-Path $destinationFolder "base_1000000000.fbin"
     Rename-Item -Path $tempBasePath -NewName $newBasePath
