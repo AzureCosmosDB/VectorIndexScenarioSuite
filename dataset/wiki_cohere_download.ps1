@@ -27,29 +27,29 @@ $env:PATH += ";$azcopyPath"
 if (-not $skipDownload)
 {
     #Pre-computed ground truth file for 100K, 1M and 35M vectors.
-    azcopy copy "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/wikipedia-100K" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
+    azcopy copy "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/wikipedia-100K" $destinationFolder --from-to BlobLocal 
     $temp100KPath = Join-Path $destinationFolder "wikipedia-100K"
     $new100KPath = Join-Path $destinationFolder "wikipedia_truth_100000"
     Rename-Item -Path $temp100KPath -NewName $new100KPath
 
-    azcopy copy "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/wikipedia-1M" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
+    azcopy copy "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/wikipedia-1M" $destinationFolder --from-to BlobLocal 
     $temp1MPath = Join-Path $destinationFolder "wikipedia-1M"
     $new1MPath = Join-Path $destinationFolder "wikipedia_truth_1000000"
     Rename-Item -Path $temp1MPath -NewName $new1MPath
 
-    azcopy copy "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/wikipedia-35M" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
+    azcopy copy "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/wikipedia-35M" $destinationFolder --from-to BlobLocal 
     $temp35MPath = Join-Path $destinationFolder "wikipedia-35M"
     $new35MPath = Join-Path $destinationFolder "wikipedia_truth_35000000"
     Rename-Item -Path $temp35MPath -NewName $new35MPath
 
     # Query file
-    azcopy copy "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/wikipedia_query.bin" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
+    azcopy copy "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/wikipedia_query.bin" $destinationFolder --from-to BlobLocal 
     $tempQueryPath = Join-Path $destinationFolder "wikipedia_query.bin"
     $newQueryPath = Join-Path $destinationFolder "wikipedia_query.fbin"
     Rename-Item -Path $tempQueryPath -NewName $newQueryPath
 
     # Base Dataset
-    azcopy copy "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/wikipedia_base.bin" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
+    azcopy copy "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/wikipedia_base.bin" $destinationFolder --from-to BlobLocal 
     $temp35MPath = Join-Path $destinationFolder "wikipedia_base.bin"
     $new35MPath = Join-Path $destinationFolder "wikipedia_base_35000000.fbin"
     Rename-Item -Path $temp35MPath -NewName $new35MPath

@@ -32,7 +32,7 @@ Write-Information "Starting download..."
 for ($i=1; $i -le 1001; $i++)
 {
     # handle 404 error with azcopy (do not log error)
-    $outputIgnore = azcopy copy "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/wikipedia-35M_expirationtime_runbook.yaml/step$i.gt100" $destinationFolder --from-to BlobLocal --check-md5 NoCheck 2>&1     
+    $outputIgnore = azcopy copy "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/wikipedia-35M_expirationtime_runbook.yaml/step$i.gt100" $destinationFolder --from-to BlobLocal  2>&1     
     
     Write-Information "Done with step $i."
 }

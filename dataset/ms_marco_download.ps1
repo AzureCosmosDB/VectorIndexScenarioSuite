@@ -27,29 +27,29 @@ $newBasePath = Join-Path $destinationFolder "base_100000000.fbin"
 if (-not $skipDownload)
 {
     #Pre-computed ground truth file for 1M, 10M and 100M vectors.
-    azcopy copy "https://comp21storage.z5.web.core.windows.net/msmarcowebsearch/msmarco-1M-gt100" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
+    azcopy copy "https://comp21storage.z5.web.core.windows.net/msmarcowebsearch/msmarco-1M-gt100" $destinationFolder --from-to BlobLocal 
     $temp1MPath = Join-Path $destinationFolder "msmarco-1M-gt100"
     $new1MPath = Join-Path $destinationFolder "ground_truth_1000000"
     Rename-Item -Path $temp1MPath -NewName $new1MPath
 
-    azcopy copy "https://comp21storage.z5.web.core.windows.net/msmarcowebsearch/msmarco-10M-gt100" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
+    azcopy copy "https://comp21storage.z5.web.core.windows.net/msmarcowebsearch/msmarco-10M-gt100" $destinationFolder --from-to BlobLocal 
     $temp10MPath = Join-Path $destinationFolder "msmarco-10M-gt100"
     $new10MPath = Join-Path $destinationFolder "ground_truth_10000000"
     Rename-Item -Path $temp10MPath -NewName $new10MPath
 
-    azcopy copy "https://comp21storage.z5.web.core.windows.net/msmarcowebsearch/msmarco-100M-gt100" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
+    azcopy copy "https://comp21storage.z5.web.core.windows.net/msmarcowebsearch/msmarco-100M-gt100" $destinationFolder --from-to BlobLocal 
     $temp100MPath = Join-Path $destinationFolder "msmarco-100M-gt100"
     $new100MPath = Join-Path $destinationFolder "ground_truth_100000000"
     Rename-Item -Path $temp100MPath -NewName $new100MPath
 
     # Query file
-    azcopy copy "https://msmarco.z22.web.core.windows.net/msmarcowebsearch/vectors/SimANS/query_vectors/vectors.bin" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
+    azcopy copy "https://msmarco.z22.web.core.windows.net/msmarcowebsearch/vectors/SimANS/query_vectors/vectors.bin" $destinationFolder --from-to BlobLocal 
     $tempQueryPath = Join-Path $destinationFolder "query.bin"
     $newQueryPath = Join-Path $destinationFolder "query.bin"
     Rename-Item -Path $tempQueryPath -NewName $newQueryPath
 
     # Base Dataset
-    azcopy copy "https://msmarco.z22.web.core.windows.net/msmarcowebsearch/vectors/SimANS/passage_vectors/vectors.bin" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
+    azcopy copy "https://msmarco.z22.web.core.windows.net/msmarcowebsearch/vectors/SimANS/passage_vectors/vectors.bin" $destinationFolder --from-to BlobLocal 
     $tempBasePath = Join-Path $destinationFolder "vectors.bin"
     $newBasePath = Join-Path $destinationFolder "base_100000000"
     Rename-Item -Path $tempBasePath -NewName $newBasePath
