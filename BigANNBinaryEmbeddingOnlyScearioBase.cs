@@ -124,7 +124,7 @@ namespace VectorIndexScenarioSuite
             return properties;
         }
 
-        protected async Task PerformIngestion(IngestionOperationType ingestionOperationType, int? startTagId, int startVectorId, int totalVectors)
+        protected async Task PerformIngestion(IngestionOperationType ingestionOperationType, int startVectorId, int totalVectors)
         {
             int numBulkIngestionBatchCount = Convert.ToInt32(this.Configurations["AppSettings:scenario:numBulkIngestionBatchCount"]);
             if (totalVectors % numBulkIngestionBatchCount != 0)
@@ -140,14 +140,13 @@ namespace VectorIndexScenarioSuite
                 Console.WriteLine(
                     $"Starting ingestion for operation {ingestionOperationType.ToString()}, range: {rangeIndex} with start vectorId: [{startVectorIdForRange}, " +
                     $"{startVectorIdForRange + numVectorsPerRange})");
-
-                tasks.Add(BulkIngestDataForRange(ingestionOperationType, startTagId, startVectorIdForRange, numVectorsPerRange));
+                tasks.Add(BulkIngestDataForRange(ingestionOperationType, startVectorIdForRange, numVectorsPerRange));
             }
 
             await Task.WhenAll(tasks);
         }
 
-        protected async Task BulkIngestDataForRange(IngestionOperationType ingestionOperationType, int? startTagId, int startVectorId, int numVectorsToIngest)
+        protected async Task BulkIngestDataForRange(IngestionOperationType ingestionOperationType, int startVectorId, int numVectorsToIngest)
         {
             // The batches that the SDK creates to optimize throughput have a current maximum of 2Mb or 100 operations per batch, 
             List<Task> ingestTasks = new List<Task>(COSMOSDB_MAX_BATCH_SIZE);
@@ -156,18 +155,9 @@ namespace VectorIndexScenarioSuite
             string logFilePath = Path.Combine(errorLogBasePath, $"{this.RunName}-ingest.log");
 
             int totalVectorsIngested = 0;
-            await foreach ((int vectorId, float[] newVector) in BigANNBinaryFormat.GetBinaryDataAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest))
+            await foreach ((int vectorId, float[] vector) in BigANNBinaryFormat.GetBinaryDataAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest))
             {
-                int vectorIdForOperation = vectorId;
-
-                // For Replace scenario, the vectorId here is for the new image but we need original id to replace which is based on the tag.
-                if (ingestionOperationType == IngestionOperationType.Replace)
-                {
-                    int startTagIdValue = startTagId.HasValue ? startTagId.Value : throw new ArgumentNullException("StartId is null");
-                    vectorIdForOperation = startTagIdValue + (vectorId - startVectorId);
-                }
-                
-                var createTask = CreateIngestionOperationTask(ingestionOperationType, vectorIdForOperation, newVector).ContinueWith(async itemResponse =>
+                var createTask = CreateIngestionOperationTask(ingestionOperationType, vectorId, vector).ContinueWith(async itemResponse =>
                 {
                     if (!itemResponse.IsCompletedSuccessfully)
                     {
@@ -217,8 +207,6 @@ namespace VectorIndexScenarioSuite
                     return this.CosmosContainerWithBulkClient.DeleteItemAsync<EmbeddingOnlyDocument>(
                         vectorId.ToString(), new PartitionKey(vectorId.ToString()));
                 case IngestionOperationType.Replace:
-                    return this.CosmosContainerWithBulkClient.ReplaceItemAsync<EmbeddingOnlyDocument>(
-                        new EmbeddingOnlyDocument(vectorId.ToString(), newVector), vectorId.ToString(), new PartitionKey(vectorId.ToString()));
                     throw new NotImplementedException("Replace not implemented yet");
                 default:
                     throw new ArgumentException("Invalid IngestionOperationType");
@@ -376,7 +364,7 @@ namespace VectorIndexScenarioSuite
             if(runIngestion) 
             {
                 int totalVectors = Convert.ToInt32(this.Configurations["AppSettings:scenario:sliceCount"]);
-                await PerformIngestion(IngestionOperationType.Insert, null /* startTagId */, 0 /* startVectorId */, totalVectors);
+                await PerformIngestion(IngestionOperationType.Insert, 0 /* startVectorId */, totalVectors);
             }
 
             bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
@@ -414,7 +402,6 @@ namespace VectorIndexScenarioSuite
             int insertSteps = 0;
             int searchSteps = 0;
             int deleteSteps = 0;
-            int replaceSteps = 0;
             int currentVectorCount = 0;
 
             int totalVectorsInserted = 0;
@@ -434,7 +421,7 @@ namespace VectorIndexScenarioSuite
                         int numVectors = (endVectorId - startVectorId);
                         if (runIngestion && (operationId >= startOperationId))
                         {
-                            await PerformIngestion(IngestionOperationType.Insert, null /* startTagId */, startVectorId, numVectors);
+                            await PerformIngestion(IngestionOperationType.Insert, startVectorId, numVectors);
                         }
 
                         totalVectorsInserted += numVectors;
@@ -486,7 +473,7 @@ namespace VectorIndexScenarioSuite
 
                         if (runIngestion && (operationId >= startOperationId))
                         {
-                            await PerformIngestion(IngestionOperationType.Delete, null /* startTagId */, start, numVectors);
+                            await PerformIngestion(IngestionOperationType.Delete, start, numVectors);
                         }
                         totalVectorsDeleted += numVectors;
 
@@ -497,7 +484,6 @@ namespace VectorIndexScenarioSuite
                     case "replace":
                     {
                         throw new NotImplementedException("Replace not implemented yet");
-                        break;
                     }
                     default:
                     {
