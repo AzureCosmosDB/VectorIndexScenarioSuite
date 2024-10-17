@@ -14,6 +14,10 @@ namespace VectorIndexScenarioSuite
         [YamlMember(Alias = "end")]
         public int? End { get; set; }
 
+        [YamlMember(Alias = "operation")]
+        public required string Name { get; set; }
+
+        /* Future Replace Support */
         [YamlMember(Alias = "ids_start")]
         public int? IdsStart { get; set; }
 
@@ -25,9 +29,6 @@ namespace VectorIndexScenarioSuite
 
         [YamlMember(Alias = "tags_end")]
         public int? TagsEnd { get; set; }
-
-        [YamlMember(Alias = "operation")]
-        public required string Name { get; set; }
     }
 
     internal class RunbookData
@@ -53,6 +54,7 @@ namespace VectorIndexScenarioSuite
         // Default constructor is required for deserialization
         public Runbook()
         {
+            this.Version = 0;
             this.RunbookData = new RunbookData() { 
                 GroundTruthURL = string.Empty, MaxPoints = 0, Operation = new Dictionary<string, Operation>()
             };
@@ -69,7 +71,6 @@ namespace VectorIndexScenarioSuite
             var yamlContent = await reader.ReadToEndAsync();
 
             var deserializer = new DeserializerBuilder().Build();
-
             var runbook = deserializer.Deserialize<Runbook>(yamlContent);
 
             Console.WriteLine($"Runbook version: {runbook.Version}");

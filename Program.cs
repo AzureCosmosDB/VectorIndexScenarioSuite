@@ -68,12 +68,12 @@ namespace VectorIndexScenarioSuite
                     return new MSMarcoEmbeddingOnlyScenario(configurations);
                 case Scenarios.MSTuringEmbeddingOnly:
                     return new MSTuringEmbeddingOnlyScenario(configurations);
-                case Scenarios.MSTuringEmbeddingOnlyStreaming:
-                    return new MSTuringEmbeddingOnlyStreamingScenario(configurations);
                 case Scenarios.WikiCohereEnglishEmbeddingOnly:
                     return new WikiCohereEnglishEmbeddingOnlyScenario(configurations);
-                case Scenarios.WikiCohereEnglishEmbeddingOnlyStreaming:
-                    return new WikiCohereEnglishEmbeddingOnlyStreamingScenario(configurations);
+                case Scenarios.WikiCohereEnglishEmbeddingOnly1MStreaming:
+                    return new WikiCohereEnglishEmbeddingOnly35MStreamingScenario(configurations);
+                case Scenarios.WikiCohereEnglishEmbeddingOnly35MStreaming:
+                    return new WikiCohereEnglishEmbeddingOnly1MStreamingScenario(configurations);
                 default:
                     throw new System.Exception($"Scenario {scenarioName} is not supported.");
             }

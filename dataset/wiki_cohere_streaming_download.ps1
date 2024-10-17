@@ -26,7 +26,7 @@ $InformationPreference = 'Continue'
 
 Write-Information "Starting download..."
 
-# loop from 1 to 260 for all steps.
+# loop from 1 to 260 for all steps defined in runbook.
 # Note that Ground truth files are not available for all steps but only for 'Search' steps. To simplify the script, we iterate over all steps anyways and fail silently if the file is not found.
 $destinationFolder = $destinationFolder + "\wikipedia-1M_expirationtime_runbook.yaml"
 $destinationFolder = Resolve-Path -Path $destinationFolder

@@ -2,11 +2,11 @@
 
 namespace VectorIndexScenarioSuite
 {
-    internal class WikiCohereEnglishEmbeddingOnlyStreamingScenario : WikiCohereEnglishEmbeddingBase
+    internal class WikiCohereEnglishEmbeddingOnly35MStreamingScenario : WikiCohereEnglishEmbeddingBase
     {
-        protected override string RunName => "wiki-cohere-english-embedding-only-streaming-" + guid;
+        protected override string RunName => "wiki-cohere-english-embedding-only-35M-streaming-" + guid;
 
-        public WikiCohereEnglishEmbeddingOnlyStreamingScenario(IConfiguration configurations) : 
+        public WikiCohereEnglishEmbeddingOnly35MStreamingScenario(IConfiguration configurations) : 
             base(configurations, DefaultInitialAndFinalThroughput(configurations).Item1)
         { }
 
