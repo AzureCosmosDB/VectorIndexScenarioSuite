@@ -22,6 +22,11 @@ namespace VectorIndexScenarioSuite
         {
         }
 
+        public override async Task Run()
+        {
+            await RunScenario();
+        }
+
         public override void Setup()
         {
             this.ReplaceFinalThroughput(DefaultInitialAndFinalThroughput(this.Configurations).Item2);

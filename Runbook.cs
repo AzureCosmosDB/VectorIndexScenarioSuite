@@ -41,6 +41,7 @@ namespace VectorIndexScenarioSuite
         // Default constructor is required for deserialization
         public Runbook()
         {
+            this.Version = 0;
             this.RunbookData = new RunbookData() { 
                 GroundTruthURL = string.Empty, MaxPoints = 0, Operation = new Dictionary<string, Operation>()
             };
@@ -57,7 +58,6 @@ namespace VectorIndexScenarioSuite
             var yamlContent = await reader.ReadToEndAsync();
 
             var deserializer = new DeserializerBuilder().Build();
-
             var runbook = deserializer.Deserialize<Runbook>(yamlContent);
 
             Console.WriteLine($"Runbook version: {runbook.Version}");
