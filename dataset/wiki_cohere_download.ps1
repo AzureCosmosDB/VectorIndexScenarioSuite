@@ -46,7 +46,7 @@ function CreateSlice {
 
     $totalVectorsInBaseFile = $reader.ReadInt32()  
     if ($totalVectorsInBaseFile -ne 35000000) {
-        Write-Error "The base file should have 100M vectors."
+        Write-Error "The base file should have 35M vectors."
         exit 1
     }  
 

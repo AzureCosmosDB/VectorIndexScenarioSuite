@@ -16,19 +16,6 @@ namespace VectorIndexScenarioSuite
 
         [YamlMember(Alias = "operation")]
         public required string Name { get; set; }
-
-        /* Future Replace Support */
-        [YamlMember(Alias = "ids_start")]
-        public int? IdsStart { get; set; }
-
-        [YamlMember(Alias = "ids_end")]
-        public int? IdsEnd { get; set; }
-
-        [YamlMember(Alias = "tags_start")]
-        public int? TagsStart { get; set; }
-
-        [YamlMember(Alias = "tags_end")]
-        public int? TagsEnd { get; set; }
     }
 
     internal class RunbookData

@@ -62,7 +62,6 @@ function CreateSlice {
     $writer.Close()
 }
 
-
 # Generate 1M Slice
 $new1MSlicePath = Join-Path $destinationFolder "base_1000000.fbin"
 CreateSlice -basePath $newBasePath -newSliceBasePath $new1MSlicePath -numVectors 1000000

@@ -71,9 +71,9 @@ namespace VectorIndexScenarioSuite
                 case Scenarios.WikiCohereEnglishEmbeddingOnly:
                     return new WikiCohereEnglishEmbeddingOnlyScenario(configurations);
                 case Scenarios.WikiCohereEnglishEmbeddingOnly1MStreaming:
-                    return new WikiCohereEnglishEmbeddingOnly35MStreamingScenario(configurations);
-                case Scenarios.WikiCohereEnglishEmbeddingOnly35MStreaming:
                     return new WikiCohereEnglishEmbeddingOnly1MStreamingScenario(configurations);
+                case Scenarios.WikiCohereEnglishEmbeddingOnly35MStreaming:
+                    return new WikiCohereEnglishEmbeddingOnly35MStreamingScenario(configurations);
                 default:
                     throw new System.Exception($"Scenario {scenarioName} is not supported.");
             }
