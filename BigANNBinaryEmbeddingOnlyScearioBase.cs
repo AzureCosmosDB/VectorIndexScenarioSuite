@@ -41,7 +41,6 @@ namespace VectorIndexScenarioSuite
         protected abstract ulong EmbeddingDimensions { get; }
         protected abstract int MaxPhysicalPartitionCount { get; }
         protected abstract string RunName { get; }
-        
         protected static Guid guid = Guid.NewGuid();
 
         private const string GROUND_TRUTH_FILE_PREFIX_FOR_STEP = "step";
@@ -196,17 +195,18 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        private Task<ItemResponse<EmbeddingOnlyDocument>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, int vectorId, float[] newVector)
+        private Task<ItemResponse<EmbeddingOnlyDocument>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, int vectorId, float[] vector)
         {
             switch (ingestionOperationType)
             {
                 case IngestionOperationType.Insert:
                     return this.CosmosContainerWithBulkClient.CreateItemAsync<EmbeddingOnlyDocument>(
-                        new EmbeddingOnlyDocument(vectorId.ToString(), newVector), new PartitionKey(vectorId.ToString()));
+                        new EmbeddingOnlyDocument(vectorId.ToString(), vector), new PartitionKey(vectorId.ToString()));
                 case IngestionOperationType.Delete:
                     return this.CosmosContainerWithBulkClient.DeleteItemAsync<EmbeddingOnlyDocument>(
                         vectorId.ToString(), new PartitionKey(vectorId.ToString()));
                 case IngestionOperationType.Replace:
+                    // This needs APIs to be further enhanced before we support it.
                     throw new NotImplementedException("Replace not implemented yet");
                 default:
                     throw new ArgumentException("Invalid IngestionOperationType");

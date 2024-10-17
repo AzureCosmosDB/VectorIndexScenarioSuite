@@ -1,4 +1,4 @@
-﻿# This is a slightly modified version of the BigANN runbook : https://github.com/harsha-simhadri/big-ann-benchmarks/blob/main/neurips23/streaming/wikipedia-35M_expirationtime_runbook.yaml
+﻿# This is a slightly modified version of the BigANN runbook.
 # Minor changes to the format to work more easily with the C# strong-typed deserializer
 version: 1
 scenario:
