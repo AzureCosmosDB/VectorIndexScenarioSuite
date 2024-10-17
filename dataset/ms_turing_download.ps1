@@ -64,13 +64,14 @@ function CreateSlice {
 
 
 # Generate 1M Slice
+$basePath = Resolve-Path -Path $destinationFolder\base_1000000000.fbin
 $new1MSlicePath = Join-Path $destinationFolder "base_1000000.fbin"
-CreateSlice -basePath $newBasePath -newSliceBasePath $new1MSlicePath -numVectors 1000000
+CreateSlice -basePath $basePath -newSliceBasePath $new1MSlicePath -numVectors 1000000
 
 # Generate 10M Slice
 $new10MSlicePath = Join-Path $destinationFolder "base_10000000.fbin"
-CreateSlice -basePath $newBasePath -newSliceBasePath $new10MSlicePath -numVectors 10000000
+CreateSlice -basePath $basePath -newSliceBasePath $new10MSlicePath -numVectors 10000000
 
 # Generate 100M Slice
 $new100MSlicePath = Join-Path $destinationFolder "base_100000000.fbin"
-CreateSlice -basePath $newBasePath -newSliceBasePath $new100MSlicePath -numVectors 100000000
+CreateSlice -basePath $basePath -newSliceBasePath $new100MSlicePath -numVectors 100000000
