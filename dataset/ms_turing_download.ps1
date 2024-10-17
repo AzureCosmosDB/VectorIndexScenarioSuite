@@ -45,9 +45,9 @@ if (-not $skipDownload)
     Rename-Item -Path $temp100MPath -NewName $new100MPath
 
     azcopy copy "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/query_gt100.bin" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
-    $temp1000MPath = Join-Path $destinationFolder "msturing-gt-1000M"
+    $temp1000MPath = Join-Path $destinationFolder "query_gt100.bin"
     $new1000MPath = Join-Path $destinationFolder "ground_truth_1000000000"
-    Rename-Item -Path $temp100MPath -NewName $new100MPath
+    Rename-Item -Path $temp1000MPath -NewName $new1000MPath 
 
     # Query file
     azcopy copy "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/query100K.fbin" $destinationFolder --from-to BlobLocal --check-md5 NoCheck
