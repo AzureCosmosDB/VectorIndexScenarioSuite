@@ -23,7 +23,7 @@ namespace VectorIndexScenarioSuite
         private static (int, int) DefaultInitialAndFinalThroughput(IConfiguration configurations)
         {
             // Setup the scenario with 1physical partitions and 10K RU/s.
-            return (400, 100000);
+            return (400, 10000);
         }
 
         public override void Stop()

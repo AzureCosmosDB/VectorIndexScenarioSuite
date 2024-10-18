@@ -21,9 +21,9 @@
                     return Scenarios.MSTuringEmbeddingOnly;
                 case "wiki-cohere-english-embedding-only":
                     return Scenarios.WikiCohereEnglishEmbeddingOnly;
-                case "wiki-cohere-english-embedding-only-1M-streaming":
+                case "wiki-cohere-english-embedding-only-1m-streaming":
                     return Scenarios.WikiCohereEnglishEmbeddingOnly1MStreaming;
-                case "wiki-cohere-english-embedding-only-35M-streaming":
+                case "wiki-cohere-english-embedding-only-35m-streaming":
                     return Scenarios.WikiCohereEnglishEmbeddingOnly35MStreaming;
                 default:
                     throw new ArgumentException("Invalid scenario value", scenarioString);
