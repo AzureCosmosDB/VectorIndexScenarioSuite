@@ -435,10 +435,16 @@ namespace VectorIndexScenarioSuite
                         // No warmup logic added for now as this scenario is focused on recall.
                         if (runQuery && (operationId >= startOperationId))
                         {
+                            // Reset queryRecallResults for each step.
+                            // Query metrics are not reset as they are cumulative across steps.
+                            this.queryRecallResults = 
+                                    new ConcurrentDictionary<int, ConcurrentDictionary<string, List<IdWithSimilarityScore>>>();
+
                             int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
                             for (int kI = 0; kI < K_VALS.Length; kI++)
                             {
                                 Console.WriteLine($"Performing {totalQueryVectors} queries for Recall/RU/Latency stats for K: {K_VALS[kI]}.");
+                                this.queryRecallResults.TryAdd(K_VALS[kI], new ConcurrentDictionary<string, List<IdWithSimilarityScore>>());
                                 await PerformQuery(false /* isWarmup */, totalQueryVectors, K_VALS[kI] /*KVal*/, GetQueryDataPath());
                             }
 
