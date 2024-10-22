@@ -1,13 +1,8 @@
 ﻿using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace VectorIndexScenarioSuite
 {
@@ -42,14 +37,6 @@ namespace VectorIndexScenarioSuite
         protected abstract int MaxPhysicalPartitionCount { get; }
         protected abstract string RunName { get; }
         protected static Guid guid = Guid.NewGuid();
-
-        private const string GROUND_TRUTH_FILE_PREFIX_FOR_STEP = "step";
-
-        /* 
-         * For now all scenarios have ground truth computed till 100 Nearest Neighbors. 
-         * This can be extended to more if needed.
-         */
-        private const string GROUND_TRUTH_FILE_EXTENSION_FOR_STEP = ".gt100";
 
         /* Map 'K' -> Neighbor Results
          * Neighbor Results:
