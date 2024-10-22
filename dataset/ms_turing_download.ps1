@@ -16,17 +16,17 @@ $destinationFolder = Resolve-Path -Path $destinationFolder
 if (-not $skipDownload)
 {
     # Ground Truth files
-    Invoke-WebRequest "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/msturing-gt-1M" -OutFile $destinationFolder\ground_truth_1000000    
+    Invoke-WebRequest "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/msturing-gt-1M" -OutFile $destinationFolder\ground_truth_1000000
 
-    Invoke-WebRequest "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/msturing-gt-10M" -OutFile $destinationFolder\ground_truth_10000000       
+    Invoke-WebRequest "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/msturing-gt-10M" -OutFile $destinationFolder\ground_truth_10000000
    
-    Invoke-WebRequest "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/msturing-gt-100M" -OutFile $destinationFolder\ground_truth_100000000      
+    Invoke-WebRequest "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/msturing-gt-100M" -OutFile $destinationFolder\ground_truth_100000000
 
     # Query file
-    Invoke-WebRequest "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/query100K.fbin" -OutFile $destinationFolder\query.fbin      
+    Invoke-WebRequest "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/query100K.fbin" -OutFile $destinationFolder\query.fbin
 
     # Base Dataset
-    Invoke-WebRequest "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/base1b.fbin" -OutFile $destinationFolder\base_1000000000.fbin     
+    Invoke-WebRequest "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/base1b.fbin" -OutFile $destinationFolder\base_1000000000.fbin
 }
 
 # Slices follow the same format as the base file.

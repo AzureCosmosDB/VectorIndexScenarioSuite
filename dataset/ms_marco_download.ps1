@@ -23,10 +23,10 @@ if (-not $skipDownload)
     Invoke-WebRequest "https://comp21storage.z5.web.core.windows.net/msmarcowebsearch/msmarco-100M-gt100" -OutFile $destinationFolder\ground_truth_100000000
 
     # Query file
-    Invoke-WebRequest "https://msmarco.z22.web.core.windows.net/msmarcowebsearch/vectors/SimANS/query_vectors/vectors.bin" -OutFile $destinationFolder\query.bin    
+    Invoke-WebRequest "https://msmarco.z22.web.core.windows.net/msmarcowebsearch/vectors/SimANS/query_vectors/vectors.bin" -OutFile $destinationFolder\query.bin
 
     # Base Dataset
-    Invoke-WebRequest "https://msmarco.z22.web.core.windows.net/msmarcowebsearch/vectors/SimANS/passage_vectors/vectors.bin" -OutFile $destinationFolder\base_100000000  
+    Invoke-WebRequest "https://msmarco.z22.web.core.windows.net/msmarcowebsearch/vectors/SimANS/passage_vectors/vectors.bin" -OutFile $destinationFolder\base_100000000
 }
 
 # Slices follow the same format as the base file.
@@ -45,7 +45,7 @@ function CreateSlice {
     $writer = New-Object System.IO.BinaryWriter([System.IO.File]::Create($newSliceBasePath))
 
     $totalVectorsInBaseFile = $reader.ReadInt32()  
-    if ($totalVectorsInBaseFile -ne 100000000) {
+    if ($totalVectorsInBaseFile -ne 101070374) {
         Write-Error "The base file should have 100M vectors."
         exit 1
     }  
