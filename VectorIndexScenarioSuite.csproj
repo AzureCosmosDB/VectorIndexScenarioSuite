@@ -18,9 +18,12 @@
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-     <None Update="runbooks/wikipedia-35M_expirationtime_runbook.yaml">
+    <None Update="runbooks/wikipedia-35M_expirationtime_runbook.yaml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>   
+    <None Update="runbooks/wikipedia-1M_expirationtime_runbook.yaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>      
   </ItemGroup>
 
 </Project>
