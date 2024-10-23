@@ -17,13 +17,25 @@
     <PackageReference Include="YamlDotNet" Version="16.1.0" />
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="runbooks/wikipedia-35M_expirationtime_runbook.yaml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>   
+    </None> 
     <None Update="runbooks/wikipedia-1M_expirationtime_runbook.yaml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>      
+    </None>
+    <None Update="runbooks/wikipedia-1M_expirationtime_replace_only_runbook.yaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="runbooks/wikipedia-1M_expirationtime_replace_delete_runbook.yaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>    
+    <None Update="runbooks/wikipedia-35M_expirationtime_runbook.yaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="runbooks/wikipedia-35M_expirationtime_replace_only_runbook.yaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="runbooks/wikipedia-35M_expirationtime_replace_delete_runbook.yaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>         
   </ItemGroup>
 
 </Project>

@@ -49,6 +49,8 @@ namespace VectorIndexScenarioSuite
 
         protected ScenarioMetrics ingestionMetrics;
 
+        protected TagIdMapper tagIdMapper;
+
         public BigANNBinaryEmbeddingOnlyScearioBase(IConfiguration configurations, int throughPut) : 
             base(configurations, throughPut)
         {
@@ -59,6 +61,7 @@ namespace VectorIndexScenarioSuite
             this.K_VALS = configurations.GetSection("AppSettings:scenario:kValues").Get<int[]>() ?? 
                 throw new ArgumentNullException("AppSettings:scenario:kValues");
             this.ingestionMetrics = new ScenarioMetrics(0);
+            this.tagIdMapper = new TagIdMapper();
 
             for(int kI = 0; kI < K_VALS.Length; kI++)
             {
@@ -110,7 +113,7 @@ namespace VectorIndexScenarioSuite
             return properties;
         }
 
-        protected async Task PerformIngestion(IngestionOperationType ingestionOperationType, int startVectorId, int totalVectors)
+        protected async Task PerformIngestion(IngestionOperationType ingestionOperationType, int? startTagId, int startVectorId, int totalVectors)
         {
             int numBulkIngestionBatchCount = Convert.ToInt32(this.Configurations["AppSettings:scenario:numBulkIngestionBatchCount"]);
             if (totalVectors % numBulkIngestionBatchCount != 0)
@@ -126,13 +129,13 @@ namespace VectorIndexScenarioSuite
                 Console.WriteLine(
                     $"Starting ingestion for operation {ingestionOperationType.ToString()}, range: {rangeIndex} with start vectorId: [{startVectorIdForRange}, " +
                     $"{startVectorIdForRange + numVectorsPerRange})");
-                tasks.Add(BulkIngestDataForRange(ingestionOperationType, startVectorIdForRange, numVectorsPerRange));
+                tasks.Add(BulkIngestDataForRange(ingestionOperationType, startTagId, startVectorIdForRange, numVectorsPerRange));
             }
 
             await Task.WhenAll(tasks);
         }
 
-        protected async Task BulkIngestDataForRange(IngestionOperationType ingestionOperationType, int startVectorId, int numVectorsToIngest)
+        protected async Task BulkIngestDataForRange(IngestionOperationType ingestionOperationType, int? startTagId, int startVectorId, int numVectorsToIngest)
         {
             // The batches that the SDK creates to optimize throughput have a current maximum of 2Mb or 100 operations per batch, 
             List<Task> ingestTasks = new List<Task>(COSMOSDB_MAX_BATCH_SIZE);
@@ -143,7 +146,16 @@ namespace VectorIndexScenarioSuite
             int totalVectorsIngested = 0;
             await foreach ((int vectorId, float[] vector) in BigANNBinaryFormat.GetBinaryDataAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest))
             {
-                var createTask = CreateIngestionOperationTask(ingestionOperationType, vectorId, vector).ContinueWith(async itemResponse =>
+                int vectorIdForOperation = vectorId;
+
+                // For Replace scenario, the vectorId here is for the new image but we need original id to replace which is based on the tag.
+                if (ingestionOperationType == IngestionOperationType.Replace)
+                {
+                    int startTagIdValue = startTagId.HasValue ? startTagId.Value : throw new ArgumentNullException("StartId is null");
+                    vectorIdForOperation = startTagIdValue + (vectorId - startVectorId);
+                }
+
+                var createTask = CreateIngestionOperationTask(ingestionOperationType, vectorIdForOperation, vector).ContinueWith(async itemResponse =>
                 {
                     if (!itemResponse.IsCompletedSuccessfully)
                     {
@@ -193,7 +205,8 @@ namespace VectorIndexScenarioSuite
                     return this.CosmosContainerWithBulkClient.DeleteItemAsync<EmbeddingOnlyDocument>(
                         vectorId.ToString(), new PartitionKey(vectorId.ToString()));
                 case IngestionOperationType.Replace:
-                    // This needs APIs to be further enhanced before we support it.
+                    return this.CosmosContainerWithBulkClient.ReplaceItemAsync<EmbeddingOnlyDocument>(
+                        new EmbeddingOnlyDocument(vectorId.ToString(), vector), vectorId.ToString(), new PartitionKey(vectorId.ToString()));
                     throw new NotImplementedException("Replace not implemented yet");
                 default:
                     throw new ArgumentException("Invalid IngestionOperationType");
@@ -254,9 +267,20 @@ namespace VectorIndexScenarioSuite
                                 }
                                 var results = this.queryRecallResults[KVal][vectorId.ToString()];
 
+                                /* 
+                                 * Note for Non-Replace Scenario:
+                                 * The TagId is the same as the VectorId in the base dataset file.
+                                 * 
+                                 * Note for Replace Scenario:
+                                 * Calculating 'id' to be used for Ground Truth Calculation.
+                                 * Assume id '1' (from base dataset file) corresponds to vector [a, b, c] and was later replaced with id '2' with vector [c, d, e]
+                                 * Later, in a k-NN query, we get id '1' as the result from Cosmos DB, we actually need to use id '2' for ground truth calculation.
+                                 * This is reflected with the TagIdMapper class, where TagIdMapper[1] = 2.
+                                */
                                 foreach (var idWithScoreResponse in queryResponse)
                                 {
-                                    results.Add(idWithScoreResponse);
+                                    int groundTruthId = this.tagIdMapper.GetVectorIdForTagId(Int32.Parse(idWithScoreResponse.Id));
+                                    results.Add(new IdWithSimilarityScore(groundTruthId.ToString(), idWithScoreResponse.SimilarityScore));
                                 }
 
                                 // Similarly, QueryMetrics is null for second and subsequent pages of query results.
@@ -351,7 +375,7 @@ namespace VectorIndexScenarioSuite
             if(runIngestion) 
             {
                 int totalVectors = Convert.ToInt32(this.Configurations["AppSettings:scenario:sliceCount"]);
-                await PerformIngestion(IngestionOperationType.Insert, 0 /* startVectorId */, totalVectors);
+                await PerformIngestion(IngestionOperationType.Insert, null /* startTagId */, 0 /* startVectorId */, totalVectors);
             }
 
             bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
@@ -389,6 +413,7 @@ namespace VectorIndexScenarioSuite
             int insertSteps = 0;
             int searchSteps = 0;
             int deleteSteps = 0;
+            int replaceSteps = 0;
             int currentVectorCount = 0;
 
             int totalVectorsInserted = 0;
@@ -408,7 +433,7 @@ namespace VectorIndexScenarioSuite
                         int numVectors = (endVectorId - startVectorId);
                         if (runIngestion && (operationId >= startOperationId))
                         {
-                            await PerformIngestion(IngestionOperationType.Insert, startVectorId, numVectors);
+                            await PerformIngestion(IngestionOperationType.Insert, null /*startTagId */, startVectorId, numVectors);
                         }
 
                         totalVectorsInserted += numVectors;
@@ -466,7 +491,7 @@ namespace VectorIndexScenarioSuite
 
                         if (runIngestion && (operationId >= startOperationId))
                         {
-                            await PerformIngestion(IngestionOperationType.Delete, start, numVectors);
+                            await PerformIngestion(IngestionOperationType.Delete, null /* startTagId */, start, numVectors);
                         }
                         totalVectorsDeleted += numVectors;
 
@@ -476,7 +501,31 @@ namespace VectorIndexScenarioSuite
                     }
                     case "replace":
                     {
-                        throw new NotImplementedException("Replace not implemented yet");
+                        int tagsStart = operation.TagsStart ?? throw new MissingFieldException("TagStart missing for replace.");
+                        int tagsEnd = operation.TagsEnd ?? throw new MissingFieldException("TagEnd missing for replace.");
+
+                        int vectorIdsStart = operation.IdsStart ?? throw new MissingFieldException("IdsStart missing for replace.");
+                        int vectorIdsEnd = operation.IdsEnd ?? throw new MissingFieldException("IdsEnd missing for replace.");
+                         
+                        int numVectors = (vectorIdsEnd - vectorIdsStart);
+                        int numTags = (tagsEnd - tagsStart);
+
+                        if (numTags != numVectors)
+                        {
+                            throw new ArgumentException("Number of tags and vectors should be equal for replace operation.");
+                        }
+
+                        if (runIngestion && (operationId >= startOperationId))
+                        {
+                            await PerformIngestion(IngestionOperationType.Replace, tagsStart, vectorIdsStart, numVectors);
+                        }
+                        totalVectorsReplaced += numVectors;
+
+                        tagIdMapper.AddTagIdMapping(tagsStart, tagsEnd, vectorIdsStart, vectorIdsEnd);
+
+                        // Count replace step even if we skipped it as from runbook execution perspective, it was still done before.
+                        replaceSteps++;
+                        break;
                     }
                     default:
                     {
@@ -498,7 +547,8 @@ namespace VectorIndexScenarioSuite
                 $"inserts {totalVectorsInserted}, deletes {totalVectorsDeleted}, replaces {totalVectorsReplaced}," +
                 $"total vectors to be ingested as per appSettings: {totalNetVectorsToIngest}. ");
             int totalSteps = insertSteps + deleteSteps + searchSteps;
-            Console.WriteLine($"Executed {totalSteps} total steps with {insertSteps} insert steps, {deleteSteps} delete steps and {searchSteps} query steps.");
+            Console.WriteLine($"Executed {totalSteps} total steps with {insertSteps} insert steps, {deleteSteps} delete steps, {replaceSteps} replace steps" +
+                $" and {searchSteps} query steps.");
             Console.WriteLine($"Experiment End time in UTC: {DateTime.Now.ToUniversalTime()}");
         }
 
