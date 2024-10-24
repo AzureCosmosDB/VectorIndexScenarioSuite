@@ -215,11 +215,6 @@ namespace VectorIndexScenarioSuite
 
         protected async Task PerformQuery(bool isWarmup, int numQueries, int KVal, string dataPath)
         {
-            if(!isWarmup)
-            {
-                this.queryMetrics[KVal] = new ScenarioMetrics(numQueries);
-            }
-
             await foreach ((int vectorId, float[] vector) in 
                 BigANNBinaryFormat.GetBinaryDataAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries))
             {
