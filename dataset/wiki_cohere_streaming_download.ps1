@@ -1,4 +1,4 @@
-# Main script
+﻿# Main script
 # Please use 'wiki_cohere_download.ps1' to download the dataset and query file. This script is for downloading the additional ground truth files for each 'search' step in the streaming runbook. 
 param (
     [Parameter(Mandatory=$true)]
@@ -15,42 +15,38 @@ $destinationFolder = Resolve-Path -Path $destinationFolder
 # Set the InformationPreference to Continue to ensure Write-Information logs to the console
 $InformationPreference = 'Continue'
 
-Write-Information "Starting download for 1M Runbook..."
+function Download-GroundTruthFiles {
+    param (
+        [string]$runbookName,
+        [string]$folderName,
+        [int]$maxSteps
+    )
 
-# loop from 1 to 260 for all steps defined in runbook.
-# Note that Ground truth files are not available for all steps but only for 'Search' steps. To simplify the script, we iterate over all steps anyways and fail silently if the file is not found.
-$destinationFolderGT = New-Item -Path $destinationFolder -Name "wikipedia-1M_expirationtime_runbook_data" -ItemType "directory"
-for ($i=1; $i -le 260; $i++)
-{
-    # handle 404 error (do not log error)
-    try
-    {
-        $outputIgnore = Invoke-WebRequest "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/wikipedia-1M_expirationtime_runbook.yaml/step$i.gt100" -OutFile $destinationFolderGT
-    }
-    catch
-    {
-        Write-Information "Ground truth file not found for step $i."
-    }
+    Write-Information "Starting download for $runbookName..."
+    $destinationFolderGT = New-Item -Path $destinationFolder -Name $folderName -ItemType "directory"
 
-    Write-Information "Done with step $i."
+    for ($i=1; $i -le $maxSteps; $i++) {
+        try 
+        {
+            $outputIgnore = Invoke-WebRequest "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/$runbookName/step$i.gt100" -OutFile $destinationFolderGT
+        } 
+        catch
+        {
+            Write-Information "Ground truth file not found for step $i."
+        }
+
+        Write-Information "Done with step $i."
+    }
 }
 
-Write-Information "Starting download for 35M Runbook..."
+# GT for Delete only runbook.
+Download-GroundTruthFiles -runbookName "wikipedia-1M_expirationtime_runbook.yaml" -folderName "wikipedia-1M_expirationtime_runbook_data" -maxSteps 260
+Download-GroundTruthFiles -runbookName "wikipedia-35M_expirationtime_runbook.yaml" -folderName "wikipedia-35M_expirationtime_runbook_data" -maxSteps 1001
 
-# loop from 1 to 1001 for all steps defined in runbook here : https://github.com/harsha-simhadri/big-ann-benchmarks/blob/main/neurips23/streaming/wikipedia-35M_expirationtime_runbook.yaml
-# Note that Ground truth files are not available for all steps but only for 'Search' steps. To simplify the script, we iterate over all steps anyways and fail silently if the file is not found.
-$destinationFolderGT = New-Item -Path $destinationFolder -Name "wikipedia-35M_expirationtime_runbook_data" -ItemType "directory"
-for ($i=1; $i -le 1001; $i++)
-{
-    # handle 404 error (do not log error)
-    try
-    {
-        $outputIgnore = Invoke-WebRequest "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/wikipedia-35M_expirationtime_runbook.yaml/step$i.gt100" -OutFile $destinationFolderGT
-    }
-    catch
-    {
-        Write-Information "Ground truth file not found for step $i."
-    }
+# GT for Replace only runbook. Upload needed for 1M.
+#Download-GroundTruthFiles -runbookName "wikipedia-1M_expiration_time_replace_only_runbook.yaml" -folderName "wikipedia-1M_expirationtime_runbook_replace_only_data" -maxSteps 278
+Download-GroundTruthFiles -runbookName "wikipedia-35M_expiration_time_replace_only_runbook.yaml" -folderName "wikipedia-35M_expirationtime_replace_only_runbook_data" -maxSteps 222
 
-    Write-Information "Done with step $i."
-}
+# GT for Replace and Delete runbook.
+Download-GroundTruthFiles -runbookName "wikipedia-1M_expiration_time_replace_delete_runbook.yaml" -folderName "wikipedia-1M_expirationtime_replace_delete_runbook_data" -maxSteps 316
+Download-GroundTruthFiles -runbookName "wikipedia-35M_expiration_time_replace_delete_runbook.yaml" -folderName "wikipedia-35M_expirationtime_replace_delete_runbook_data" -maxSteps 1150

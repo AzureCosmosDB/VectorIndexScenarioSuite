@@ -2,11 +2,11 @@
 
 namespace VectorIndexScenarioSuite
 {
-    internal class WikiCohereEnglishEmbeddingOnly1MStreamingScenario : WikiCohereEnglishEmbeddingBase
+    internal class WikiCohereEnglishEmbeddingOnly35MReplaceStreamingScenario : WikiCohereEnglishEmbeddingBase
     {
-        protected override string RunName => "wiki-cohere-english-embedding-only-1M-streaming-" + guid;
+        protected override string RunName => "wiki-cohere-english-embedding-only-35M-replace-streaming-" + guid;
 
-        public WikiCohereEnglishEmbeddingOnly1MStreamingScenario(IConfiguration configurations) : 
+        public WikiCohereEnglishEmbeddingOnly35MReplaceStreamingScenario(IConfiguration configurations) : 
             base(configurations, DefaultInitialAndFinalThroughput(configurations).Item1)
         { }
 
@@ -17,13 +17,14 @@ namespace VectorIndexScenarioSuite
 
         public override async Task Run()
         {
-            await RunStreamingScenario("runbooks/wikipedia-1M_expirationtime_runbook.yaml");
+            await RunStreamingScenario("runbooks/wikipedia-35M_expirationtime_replace_only_runbook.yaml");
         }
 
         private static (int, int) DefaultInitialAndFinalThroughput(IConfiguration configurations)
         {
-            // Setup the scenario with 1physical partitions and 10K RU/s.
-            return (400, 10000);
+            // Setup the scenario with 10physical partitions and 100K RU/s.
+            // Partition count = ceil(RUs / 6000)
+            return (60000, 100000);
         }
 
         public override void Stop()
