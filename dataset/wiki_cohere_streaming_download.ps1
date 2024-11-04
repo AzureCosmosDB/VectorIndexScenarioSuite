@@ -44,7 +44,7 @@ Download-GroundTruthFiles -runbookName "wikipedia-1M_expirationtime_runbook.yaml
 Download-GroundTruthFiles -runbookName "wikipedia-35M_expirationtime_runbook.yaml" -folderName "wikipedia-35M_expirationtime_runbook_data" -maxSteps 1001
 
 # GT for Replace only runbook. Upload needed for 1M.
-#Download-GroundTruthFiles -runbookName "wikipedia-1M_expiration_time_replace_only_runbook.yaml" -folderName "wikipedia-1M_expirationtime_runbook_replace_only_data" -maxSteps 278
+Download-GroundTruthFiles -runbookName "wikipedia-1M_expiration_time_replace_only_runbook.yaml" -folderName "wikipedia-1M_expirationtime_runbook_replace_only_data" -maxSteps 278
 Download-GroundTruthFiles -runbookName "wikipedia-35M_expiration_time_replace_only_runbook.yaml" -folderName "wikipedia-35M_expirationtime_replace_only_runbook_data" -maxSteps 222
 
 # GT for Replace and Delete runbook.

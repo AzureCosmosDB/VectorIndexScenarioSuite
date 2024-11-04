@@ -325,7 +325,10 @@ namespace VectorIndexScenarioSuite
             return Path.Combine(directory, fileName);
         }
 
-        private string GetGroundTruthDataPath(int stepNumber)
+        /* Allow this to be override so we can run multiple streaming scenarios in parallel
+         * while sharing the base files.
+         */
+        protected string GetGroundTruthDataPath(int stepNumber)
         {
             string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
                 throw new ArgumentNullException("AppSettings:dataFilesBasePath");
