@@ -32,7 +32,7 @@ namespace VectorIndexScenarioSuite
             string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
                 throw new ArgumentNullException("AppSettings:dataFilesBasePath");
 
-            string fileName = $"\\wikipedia-35M_expirationtime_runbook_data\\step{stepNumber}.gt100";
+            string fileName = $"wikipedia-35M_expirationtime_runbook_data\\step{stepNumber}.gt100";
             return Path.Combine(directory, fileName);
         }
 

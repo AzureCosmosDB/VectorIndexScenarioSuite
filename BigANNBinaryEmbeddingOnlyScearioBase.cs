@@ -146,16 +146,16 @@ namespace VectorIndexScenarioSuite
             int totalVectorsIngested = 0;
             await foreach ((int vectorId, float[] vector) in BigANNBinaryFormat.GetBinaryDataAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest))
             {
-                int vectorIdForOperation = vectorId;
+                int cosmosDbDocAndPkIdForOperation = vectorId;
 
                 // For Replace scenario, the vectorId here is for the new image but we need original id to replace which is based on the tag.
                 if (ingestionOperationType == IngestionOperationType.Replace)
                 {
                     int startTagIdValue = startTagId.HasValue ? startTagId.Value : throw new ArgumentNullException("StartId is null");
-                    vectorIdForOperation = startTagIdValue + (vectorId - startVectorId);
+                    cosmosDbDocAndPkIdForOperation = startTagIdValue + (vectorId - startVectorId);
                 }
 
-                var createTask = CreateIngestionOperationTask(ingestionOperationType, vectorIdForOperation, vector).ContinueWith(async itemResponse =>
+                var createTask = CreateIngestionOperationTask(ingestionOperationType, cosmosDbDocAndPkIdForOperation, vector).ContinueWith(async itemResponse =>
                 {
                     if (!itemResponse.IsCompletedSuccessfully)
                     {
@@ -194,19 +194,19 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        private Task<ItemResponse<EmbeddingOnlyDocument>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, int vectorId, float[] vector)
+        private Task<ItemResponse<EmbeddingOnlyDocument>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, int cosmosDbDocAndPkIdForOperation, float[] vector)
         {
             switch (ingestionOperationType)
             {
                 case IngestionOperationType.Insert:
                     return this.CosmosContainerWithBulkClient.CreateItemAsync<EmbeddingOnlyDocument>(
-                        new EmbeddingOnlyDocument(vectorId.ToString(), vector), new PartitionKey(vectorId.ToString()));
+                        new EmbeddingOnlyDocument(cosmosDbDocAndPkIdForOperation.ToString(), vector), new PartitionKey(cosmosDbDocAndPkIdForOperation.ToString()));
                 case IngestionOperationType.Delete:
                     return this.CosmosContainerWithBulkClient.DeleteItemAsync<EmbeddingOnlyDocument>(
-                        vectorId.ToString(), new PartitionKey(vectorId.ToString()));
+                        cosmosDbDocAndPkIdForOperation.ToString(), new PartitionKey(cosmosDbDocAndPkIdForOperation.ToString()));
                 case IngestionOperationType.Replace:
                     return this.CosmosContainerWithBulkClient.ReplaceItemAsync<EmbeddingOnlyDocument>(
-                        new EmbeddingOnlyDocument(vectorId.ToString(), vector), vectorId.ToString(), new PartitionKey(vectorId.ToString()));
+                        new EmbeddingOnlyDocument(cosmosDbDocAndPkIdForOperation.ToString(), vector), cosmosDbDocAndPkIdForOperation.ToString(), new PartitionKey(cosmosDbDocAndPkIdForOperation.ToString()));
                     throw new NotImplementedException("Replace not implemented yet");
                 default:
                     throw new ArgumentException("Invalid IngestionOperationType");
