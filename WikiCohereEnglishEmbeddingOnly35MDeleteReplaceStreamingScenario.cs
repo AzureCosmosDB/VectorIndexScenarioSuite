@@ -20,6 +20,15 @@ namespace VectorIndexScenarioSuite
             await RunStreamingScenario("runbooks/wikipedia-35M_expirationtime_replace_delete_runbook.yaml");
         }
 
+        protected override string GetGroundTruthDataPath(int stepNumber)
+        {
+            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
+                throw new ArgumentNullException("AppSettings:dataFilesBasePath");
+
+            string fileName = $"\\wikipedia-35M_expirationtime_replace_delete_runbook_data\\step{stepNumber}.gt100";
+            return Path.Combine(directory, fileName);
+        }
+
         private static (int, int) DefaultInitialAndFinalThroughput(IConfiguration configurations)
         {
             // Setup the scenario with 10physical partitions and 100K RU/s.

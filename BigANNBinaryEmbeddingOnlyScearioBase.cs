@@ -317,7 +317,7 @@ namespace VectorIndexScenarioSuite
             return Path.Combine(directory, fileName);
         }
 
-        private string GetGroundTruthDataPath()
+        protected virtual string GetGroundTruthDataPath()
         {
             string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
                 throw new ArgumentNullException("AppSettings:dataFilesBasePath");
@@ -328,7 +328,7 @@ namespace VectorIndexScenarioSuite
         /* Allow this to be override so we can run multiple streaming scenarios in parallel
          * while sharing the base files.
          */
-        protected string GetGroundTruthDataPath(int stepNumber)
+        protected virtual string GetGroundTruthDataPath(int stepNumber)
         {
             string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
                 throw new ArgumentNullException("AppSettings:dataFilesBasePath");

@@ -26,7 +26,7 @@ namespace VectorIndexScenarioSuite
             return (400, 10000);
         }
 
-        protected string GetGroundTruthDataPath(int stepNumber)
+        protected override string GetGroundTruthDataPath(int stepNumber)
         {
             string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
                 throw new ArgumentNullException("AppSettings:dataFilesBasePath");

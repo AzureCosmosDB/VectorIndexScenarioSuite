@@ -27,6 +27,15 @@ namespace VectorIndexScenarioSuite
             return (60000, 100000);
         }
 
+        protected override string GetGroundTruthDataPath(int stepNumber)
+        {
+            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
+                throw new ArgumentNullException("AppSettings:dataFilesBasePath");
+
+            string fileName = $"\\wikipedia-35M_expirationtime_runbook_data\\step{stepNumber}.gt100";
+            return Path.Combine(directory, fileName);
+        }
+
         public override void Stop()
         {
             // No Operation required.
