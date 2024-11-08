@@ -29,7 +29,6 @@ function Download-GroundTruthFiles {
         try 
         {
             $outputIgnore = Invoke-WebRequest "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/$runbookName/step$i.gt100" -OutFile $destinationFolderGT
-            $outputIgnore2 = Invoke-WebRequest "https://comp21storage.z5.web.core.windows.net/wiki-cohere-35M/$runbookName/step$i.tags" -OutFile $destinationFolderGT
         } 
         catch
         {

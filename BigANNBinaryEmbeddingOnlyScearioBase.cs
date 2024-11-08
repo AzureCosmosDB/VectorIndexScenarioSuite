@@ -49,8 +49,6 @@ namespace VectorIndexScenarioSuite
 
         protected ScenarioMetrics ingestionMetrics;
 
-        protected TagIdMapper tagIdMapper;
-
         public BigANNBinaryEmbeddingOnlyScearioBase(IConfiguration configurations, int throughPut) : 
             base(configurations, throughPut)
         {
@@ -61,7 +59,6 @@ namespace VectorIndexScenarioSuite
             this.K_VALS = configurations.GetSection("AppSettings:scenario:kValues").Get<int[]>() ?? 
                 throw new ArgumentNullException("AppSettings:scenario:kValues");
             this.ingestionMetrics = new ScenarioMetrics(0);
-            this.tagIdMapper = new TagIdMapper();
 
             for(int kI = 0; kI < K_VALS.Length; kI++)
             {
@@ -262,20 +259,9 @@ namespace VectorIndexScenarioSuite
                                 }
                                 var results = this.queryRecallResults[KVal][vectorId.ToString()];
 
-                                /* 
-                                 * Note for Non-Replace Scenario:
-                                 * The TagId is the same as the VectorId in the base dataset file.
-                                 * 
-                                 * Note for Replace Scenario:
-                                 * Calculating 'id' to be used for Ground Truth Calculation.
-                                 * Assume id '1' (from base dataset file) corresponds to vector [a, b, c] and was later replaced with id '2' with vector [c, d, e]
-                                 * Later, in a k-NN query, we get id '1' as the result from Cosmos DB, we actually need to use id '2' for ground truth calculation.
-                                 * This is reflected with the TagIdMapper class, where TagIdMapper[1] = 2.
-                                */
                                 foreach (var idWithScoreResponse in queryResponse)
                                 {
-                                    int groundTruthId = this.tagIdMapper.GetVectorIdForTagId(Int32.Parse(idWithScoreResponse.Id));
-                                    results.Add(new IdWithSimilarityScore(groundTruthId.ToString(), idWithScoreResponse.SimilarityScore));
+                                    results.Add(idWithScoreResponse);
                                 }
 
                                 // Similarly, QueryMetrics is null for second and subsequent pages of query results.
@@ -518,8 +504,6 @@ namespace VectorIndexScenarioSuite
                             await PerformIngestion(IngestionOperationType.Replace, tagsStart, vectorIdsStart, numVectors);
                         }
                         totalVectorsReplaced += numVectors;
-
-                        tagIdMapper.AddTagIdMapping(tagsStart, tagsEnd, vectorIdsStart, vectorIdsEnd);
 
                         // Count replace step even if we skipped it as from runbook execution perspective, it was still done before.
                         replaceSteps++;
