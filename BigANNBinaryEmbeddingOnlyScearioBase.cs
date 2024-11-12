@@ -21,6 +21,74 @@ namespace VectorIndexScenarioSuite
         }
     }
 
+    internal class EmbeddingWithAmazonLabelDocument
+    {
+        [JsonProperty(PropertyName = "id")]
+        public string Id { get; }
+
+        [JsonProperty(PropertyName = "embedding")]
+        private float[] Embedding { get; }
+
+        [JsonProperty(PropertyName = "brand")]
+        private string Brand { get; }
+
+        //ratting 
+        [JsonProperty(PropertyName = "rating")]
+        private string Rating { get; }
+
+        // category
+        [JsonProperty(PropertyName = "category")]
+        private string[] Category { get; }
+
+        public EmbeddingWithAmazonLabelDocument(string id, float[] embedding, string brand, string rating, string[] category) 
+        {
+            this.Id = id;
+            this.Embedding = embedding;
+            this.Brand = brand;
+            this.Rating = rating;
+            this.Category = category;
+        }
+    }
+    internal static class LabelParser
+    {
+        public static Dictionary<string, object> ParseLineToJson(string line)
+        {
+            var result = new Dictionary<string, object>();
+            var parts = line.Split(',');
+            result["category"] = new List<string>();
+
+            foreach (var part in parts)
+            {
+                var keyValue = part.Split('=');
+                if (keyValue.Length == 2)
+                {
+                    var key = keyValue[0];
+                    var value = keyValue[1];
+
+                    if (key == "CAT")
+                    {
+                        if (!result.ContainsKey("category"))
+                        {
+                            result["category"] = new List<string>();
+                        }
+                        ((List<string>)result["category"]).Add(value);
+                    }
+                    else if (key == "BRAND")
+                    {
+                        result["brand"] = value;
+                    }
+                    else if (key == "RATING")
+                    {
+                        result["rating"] = value;
+                    }
+                }
+            }
+
+            return result;
+        }
+    }
+
+
     abstract class BigANNBinaryEmbeddingOnlyScearioBase : Scenario
     {
         protected abstract string BaseDataFile { get; }
@@ -141,9 +209,16 @@ namespace VectorIndexScenarioSuite
             string logFilePath = Path.Combine(errorLogBasePath, $"{this.RunName}-ingest.log");
 
             int totalVectorsIngested = 0;
-            await foreach ((int vectorId, float[] vector) in BigANNBinaryFormat.GetBinaryDataAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest))
+            await foreach ((int vectorId, float[] vector, string label ) in BigANNBinaryFormat.GetBinaryDataWithLabelAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest))
             {
-                var createTask = CreateIngestionOperationTask(ingestionOperationType, vectorId, vector).ContinueWith(async itemResponse =>
+                var labelJson = LabelParser.ParseLineToJson(label);
+                string brand = labelJson["brand"]?.ToString() ?? string.Empty;
+                string rating = labelJson["rating"]?.ToString() ?? string.Empty;
+                var category = ((List<string>?)labelJson["category"])?.ToArray() ?? Array.Empty<string>();
+
+                var document = new EmbeddingWithAmazonLabelDocument(vectorId.ToString(), vector,brand, rating,category);
+
+                var createTask = CreateIngestionOperationTask(ingestionOperationType,document).ContinueWith(async itemResponse =>
                 {
                     if (!itemResponse.IsCompletedSuccessfully)
                     {
@@ -182,16 +257,16 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        private Task<ItemResponse<EmbeddingOnlyDocument>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, int vectorId, float[] vector)
+        private Task<ItemResponse<EmbeddingWithAmazonLabelDocument>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, EmbeddingWithAmazonLabelDocument document)
         {
-            switch (ingestionOperationType)
+             switch (ingestionOperationType)
             {
                 case IngestionOperationType.Insert:
-                    return this.CosmosContainerWithBulkClient.CreateItemAsync<EmbeddingOnlyDocument>(
-                        new EmbeddingOnlyDocument(vectorId.ToString(), vector), new PartitionKey(vectorId.ToString()));
+                        return this.CosmosContainerWithBulkClient.CreateItemAsync<EmbeddingWithAmazonLabelDocument>(
+                        document, new PartitionKey(document.Id));
                 case IngestionOperationType.Delete:
-                    return this.CosmosContainerWithBulkClient.DeleteItemAsync<EmbeddingOnlyDocument>(
-                        vectorId.ToString(), new PartitionKey(vectorId.ToString()));
+                    return this.CosmosContainerWithBulkClient.DeleteItemAsync<EmbeddingWithAmazonLabelDocument>(
+                        document.Id, new PartitionKey(document.Id));
                 case IngestionOperationType.Replace:
                     // This needs APIs to be further enhanced before we support it.
                     throw new NotImplementedException("Replace not implemented yet");
@@ -206,11 +281,11 @@ namespace VectorIndexScenarioSuite
             {
                 this.queryMetrics[KVal] = new ScenarioMetrics(numQueries);
             }
-
-            await foreach ((int vectorId, float[] vector) in 
-                BigANNBinaryFormat.GetBinaryDataAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries))
+            await foreach ((int vectorId, float[] vector, string label) in 
+                BigANNBinaryFormat.GetBinaryDataWithLabelAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries))
             {
-                var queryDefinition = ConstructQueryDefinition(KVal, vector);
+                string where = QueryParser.ToWhereStatement(QueryParser.FromQuery(label));
+                var queryDefinition = ConstructQueryDefinition(KVal, vector, where);
 
                 bool retryQueryOnFailureForLatencyMeasurement;
                 do
@@ -280,10 +355,10 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        private QueryDefinition ConstructQueryDefinition(int K, float[] queryVector)
+        private QueryDefinition ConstructQueryDefinition(int K, float[] queryVector, string where)
         {
             string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding) AS similarityScore " +
-                $"FROM c ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false)";
+                $"FROM c  WHERE {where} ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false)";
 ;
             return new QueryDefinition(queryText).WithParameter("@vectorEmbedding", queryVector);
         }

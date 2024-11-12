@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Reflection.Emit;
 
 namespace VectorIndexScenarioSuite
 {
@@ -84,7 +85,7 @@ namespace VectorIndexScenarioSuite
                 // Seek to the start of the binary data
                 int vectorIdOffset = headerSize;
                 long distanceValueOffset = (long)headerSize + ((long)numberOfVectors * groundTruthK * sizeof(int));
-                
+
                 fileStream.Seek(headerSize, SeekOrigin.Begin);
                 fileStream2.Seek(distanceValueOffset, SeekOrigin.Begin);
 
@@ -115,14 +116,22 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        public static async IAsyncEnumerable<(int, float[])> GetBinaryDataAsync(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead)
+        public static async IAsyncEnumerable<(int, float[], string)> GetBinaryDataWithLabelAsync(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead)
         {
             // Read the header to get the number of vectors and dimensions
             (int totalNumberOfVectors, int dimensions, int headerSize) = GetBinaryDataHeader(filePath);
             int vectorSizeInBytes = dimensions * dataType.Size();
 
+            using (FileStream labelFileStream = new FileStream(filePath + ".label", FileMode.Open, FileAccess.Read))
+            using (StreamReader labelreader = new StreamReader(labelFileStream, bufferSize: 8192))
             using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true))
             {
+                for (int i = 0; i < startVectorId; i++)
+                {
+                    if (labelreader.EndOfStream) break;
+                    await labelreader.ReadLineAsync();
+                }
+
                 // Seek to the start of the binary data
                 long vectorFileOffset = (long)headerSize + ((long)startVectorId * vectorSizeInBytes);
                 fileStream.Seek(vectorFileOffset, SeekOrigin.Begin);
@@ -140,8 +149,12 @@ namespace VectorIndexScenarioSuite
                         await fileStream.ReadAsync(buffer, 0, sizeof(float));
                         vector[d] = BitConverter.ToSingle(buffer, 0);
                     }
+                    var line = await labelreader.ReadLineAsync();
+                    if (line == null) {
+                        Console.WriteLine("Empty lable line for {0}", currentId);
+                    }
 
-                    yield return (currentId, vector);
+                    yield return (currentId, vector, line);
                 }
             }
         }
