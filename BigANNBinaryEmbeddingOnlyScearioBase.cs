@@ -110,7 +110,7 @@ namespace VectorIndexScenarioSuite
             return properties;
         }
 
-        protected async Task PerformIngestion(IngestionOperationType ingestionOperationType, int startVectorId, int totalVectors)
+        protected async Task PerformIngestion(IngestionOperationType ingestionOperationType, int? startTagId, int startVectorId, int totalVectors)
         {
             int numBulkIngestionBatchCount = Convert.ToInt32(this.Configurations["AppSettings:scenario:numBulkIngestionBatchCount"]);
             if (totalVectors % numBulkIngestionBatchCount != 0)
@@ -126,13 +126,13 @@ namespace VectorIndexScenarioSuite
                 Console.WriteLine(
                     $"Starting ingestion for operation {ingestionOperationType.ToString()}, range: {rangeIndex} with start vectorId: [{startVectorIdForRange}, " +
                     $"{startVectorIdForRange + numVectorsPerRange})");
-                tasks.Add(BulkIngestDataForRange(ingestionOperationType, startVectorIdForRange, numVectorsPerRange));
+                tasks.Add(BulkIngestDataForRange(ingestionOperationType, startTagId, startVectorIdForRange, numVectorsPerRange));
             }
 
             await Task.WhenAll(tasks);
         }
 
-        protected async Task BulkIngestDataForRange(IngestionOperationType ingestionOperationType, int startVectorId, int numVectorsToIngest)
+        protected async Task BulkIngestDataForRange(IngestionOperationType ingestionOperationType, int? startTagId, int startVectorId, int numVectorsToIngest)
         {
             // The batches that the SDK creates to optimize throughput have a current maximum of 2Mb or 100 operations per batch, 
             List<Task> ingestTasks = new List<Task>(COSMOSDB_MAX_BATCH_SIZE);
@@ -143,7 +143,16 @@ namespace VectorIndexScenarioSuite
             int totalVectorsIngested = 0;
             await foreach ((int vectorId, float[] vector) in BigANNBinaryFormat.GetBinaryDataAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest))
             {
-                var createTask = CreateIngestionOperationTask(ingestionOperationType, vectorId, vector).ContinueWith(async itemResponse =>
+                int cosmosDbDocAndPkIdForOperation = vectorId;
+
+                // For Replace scenario, the vectorId here is for the new image but we need original id to replace which is based on the tag.
+                if (ingestionOperationType == IngestionOperationType.Replace)
+                {
+                    int startTagIdValue = startTagId.HasValue ? startTagId.Value : throw new ArgumentNullException("StartId is null");
+                    cosmosDbDocAndPkIdForOperation = startTagIdValue + (vectorId - startVectorId);
+                }
+
+                var createTask = CreateIngestionOperationTask(ingestionOperationType, cosmosDbDocAndPkIdForOperation, vector).ContinueWith(async itemResponse =>
                 {
                     if (!itemResponse.IsCompletedSuccessfully)
                     {
@@ -182,18 +191,19 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        private Task<ItemResponse<EmbeddingOnlyDocument>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, int vectorId, float[] vector)
+        private Task<ItemResponse<EmbeddingOnlyDocument>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, int cosmosDbDocAndPkIdForOperation, float[] vector)
         {
             switch (ingestionOperationType)
             {
                 case IngestionOperationType.Insert:
                     return this.CosmosContainerWithBulkClient.CreateItemAsync<EmbeddingOnlyDocument>(
-                        new EmbeddingOnlyDocument(vectorId.ToString(), vector), new PartitionKey(vectorId.ToString()));
+                        new EmbeddingOnlyDocument(cosmosDbDocAndPkIdForOperation.ToString(), vector), new PartitionKey(cosmosDbDocAndPkIdForOperation.ToString()));
                 case IngestionOperationType.Delete:
                     return this.CosmosContainerWithBulkClient.DeleteItemAsync<EmbeddingOnlyDocument>(
-                        vectorId.ToString(), new PartitionKey(vectorId.ToString()));
+                        cosmosDbDocAndPkIdForOperation.ToString(), new PartitionKey(cosmosDbDocAndPkIdForOperation.ToString()));
                 case IngestionOperationType.Replace:
-                    // This needs APIs to be further enhanced before we support it.
+                    return this.CosmosContainerWithBulkClient.ReplaceItemAsync<EmbeddingOnlyDocument>(
+                        new EmbeddingOnlyDocument(cosmosDbDocAndPkIdForOperation.ToString(), vector), cosmosDbDocAndPkIdForOperation.ToString(), new PartitionKey(cosmosDbDocAndPkIdForOperation.ToString()));
                     throw new NotImplementedException("Replace not implemented yet");
                 default:
                     throw new ArgumentException("Invalid IngestionOperationType");
@@ -202,11 +212,6 @@ namespace VectorIndexScenarioSuite
 
         protected async Task PerformQuery(bool isWarmup, int numQueries, int KVal, string dataPath)
         {
-            if(!isWarmup)
-            {
-                this.queryMetrics[KVal] = new ScenarioMetrics(numQueries);
-            }
-
             await foreach ((int vectorId, float[] vector) in 
                 BigANNBinaryFormat.GetBinaryDataAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries))
             {
@@ -298,7 +303,7 @@ namespace VectorIndexScenarioSuite
             return Path.Combine(directory, fileName);
         }
 
-        private string GetGroundTruthDataPath()
+        protected virtual string GetGroundTruthDataPath()
         {
             string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
                 throw new ArgumentNullException("AppSettings:dataFilesBasePath");
@@ -306,7 +311,10 @@ namespace VectorIndexScenarioSuite
             return Path.Combine(directory, fileName);
         }
 
-        private string GetGroundTruthDataPath(int stepNumber)
+        /* Allow this to be override so we can run multiple streaming scenarios in parallel
+         * while sharing the base files.
+         */
+        protected virtual string GetGroundTruthDataPath(int stepNumber)
         {
             string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
                 throw new ArgumentNullException("AppSettings:dataFilesBasePath");
@@ -351,7 +359,7 @@ namespace VectorIndexScenarioSuite
             if(runIngestion) 
             {
                 int totalVectors = Convert.ToInt32(this.Configurations["AppSettings:scenario:sliceCount"]);
-                await PerformIngestion(IngestionOperationType.Insert, 0 /* startVectorId */, totalVectors);
+                await PerformIngestion(IngestionOperationType.Insert, null /* startTagId */, 0 /* startVectorId */, totalVectors);
             }
 
             bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
@@ -389,6 +397,7 @@ namespace VectorIndexScenarioSuite
             int insertSteps = 0;
             int searchSteps = 0;
             int deleteSteps = 0;
+            int replaceSteps = 0;
             int currentVectorCount = 0;
 
             int totalVectorsInserted = 0;
@@ -408,7 +417,7 @@ namespace VectorIndexScenarioSuite
                         int numVectors = (endVectorId - startVectorId);
                         if (runIngestion && (operationId >= startOperationId))
                         {
-                            await PerformIngestion(IngestionOperationType.Insert, startVectorId, numVectors);
+                            await PerformIngestion(IngestionOperationType.Insert, null /*startTagId */, startVectorId, numVectors);
                         }
 
                         totalVectorsInserted += numVectors;
@@ -466,7 +475,7 @@ namespace VectorIndexScenarioSuite
 
                         if (runIngestion && (operationId >= startOperationId))
                         {
-                            await PerformIngestion(IngestionOperationType.Delete, start, numVectors);
+                            await PerformIngestion(IngestionOperationType.Delete, null /* startTagId */, start, numVectors);
                         }
                         totalVectorsDeleted += numVectors;
 
@@ -476,7 +485,29 @@ namespace VectorIndexScenarioSuite
                     }
                     case "replace":
                     {
-                        throw new NotImplementedException("Replace not implemented yet");
+                        int tagsStart = operation.TagsStart ?? throw new MissingFieldException("TagStart missing for replace.");
+                        int tagsEnd = operation.TagsEnd ?? throw new MissingFieldException("TagEnd missing for replace.");
+
+                        int vectorIdsStart = operation.IdsStart ?? throw new MissingFieldException("IdsStart missing for replace.");
+                        int vectorIdsEnd = operation.IdsEnd ?? throw new MissingFieldException("IdsEnd missing for replace.");
+                         
+                        int numVectors = (vectorIdsEnd - vectorIdsStart);
+                        int numTags = (tagsEnd - tagsStart);
+
+                        if (numTags != numVectors)
+                        {
+                            throw new ArgumentException("Number of tags and vectors should be equal for replace operation.");
+                        }
+
+                        if (runIngestion && (operationId >= startOperationId))
+                        {
+                            await PerformIngestion(IngestionOperationType.Replace, tagsStart, vectorIdsStart, numVectors);
+                        }
+                        totalVectorsReplaced += numVectors;
+
+                        // Count replace step even if we skipped it as from runbook execution perspective, it was still done before.
+                        replaceSteps++;
+                        break;
                     }
                     default:
                     {
@@ -498,7 +529,8 @@ namespace VectorIndexScenarioSuite
                 $"inserts {totalVectorsInserted}, deletes {totalVectorsDeleted}, replaces {totalVectorsReplaced}," +
                 $"total vectors to be ingested as per appSettings: {totalNetVectorsToIngest}. ");
             int totalSteps = insertSteps + deleteSteps + searchSteps;
-            Console.WriteLine($"Executed {totalSteps} total steps with {insertSteps} insert steps, {deleteSteps} delete steps and {searchSteps} query steps.");
+            Console.WriteLine($"Executed {totalSteps} total steps with {insertSteps} insert steps, {deleteSteps} delete steps, {replaceSteps} replace steps" +
+                $" and {searchSteps} query steps.");
             Console.WriteLine($"Experiment End time in UTC: {DateTime.Now.ToUniversalTime()}");
         }
 

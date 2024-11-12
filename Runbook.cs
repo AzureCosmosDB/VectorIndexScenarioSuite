@@ -14,6 +14,18 @@ namespace VectorIndexScenarioSuite
         [YamlMember(Alias = "end")]
         public int? End { get; set; }
 
+        [YamlMember(Alias = "ids_start")]
+        public int? IdsStart { get; set; }
+
+        [YamlMember(Alias = "ids_end")]
+        public int? IdsEnd { get; set; }
+
+        [YamlMember(Alias = "tags_start")]
+        public int? TagsStart { get; set; }
+
+        [YamlMember(Alias = "tags_end")]
+        public int? TagsEnd { get; set; }
+
         [YamlMember(Alias = "operation")]
         public required string Name { get; set; }
     }
