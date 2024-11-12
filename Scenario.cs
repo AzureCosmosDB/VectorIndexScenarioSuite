@@ -45,7 +45,7 @@ namespace VectorIndexScenarioSuite
         protected const int TEN_MILLION = 10000000;
         protected const int THIRTY_FIVE_MILLION = 35000000;
         protected const int ONE_HUNDRED_MILLION = 100000000;
-
+        protected const int ONE_BILLION = 1000000000;
         protected IConfiguration Configurations { get; set; }
 
         protected Container CosmosContainerWithBulkClient { get; set; }
