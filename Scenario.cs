@@ -1,4 +1,5 @@
-﻿using Microsoft.Azure.Cosmos;
+﻿using Azure.Identity;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 
@@ -124,13 +125,23 @@ namespace VectorIndexScenarioSuite
                 MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(60)
             };
 
-            CosmosClient cosmosClient = new CosmosClient(
-                accountEndpoint: this.Configurations["AppSettings:accountEndpoint"],
-                authKeyOrResourceToken: this.Configurations["AppSettings:authKeyOrResourceTokenCredential"],
-                clientOptions: cosmosClientOptions
+            bool useAADAuth = Convert.ToBoolean(this.Configurations["AppSettings:useAADAuth"]);
+            if (useAADAuth) 
+            {
+                return new CosmosClient(
+                    accountEndpoint: this.Configurations["AppSettings:accountEndpoint"],
+                    tokenCredential: new DefaultAzureCredential(),
+                    clientOptions: cosmosClientOptions
+               );
+            }
+            else
+            {
+                return new CosmosClient(
+                    accountEndpoint: this.Configurations["AppSettings:accountEndpoint"],
+                    authKeyOrResourceToken: this.Configurations["AppSettings:authKeyOrResourceTokenCredential"],
+                    clientOptions: cosmosClientOptions
                 );
-
-            return cosmosClient;
+            }
         }
     }
 }
