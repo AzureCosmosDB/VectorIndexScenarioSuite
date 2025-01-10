@@ -138,7 +138,7 @@ namespace VectorIndexScenarioSuite
             {
                 return new CosmosClient(
                     accountEndpoint: this.Configurations["AppSettings:accountEndpoint"],
-                    authKeyOrResourceToken: this.Configurations["AppSettings:authKeyOrResourceTokenCredential"],
+                    authKeyOrResourceToken: this.Configurations["AppSettings:authKey"],
                     clientOptions: cosmosClientOptions
                 );
             }
