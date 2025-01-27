@@ -49,7 +49,7 @@ namespace VectorIndexScenarioSuite
         protected const int ONE_BILLION = 1000000000;
         protected IConfiguration Configurations { get; set; }
 
-        protected Container CosmosContainerWithBulkClient { get; set; }
+        protected Container CosmosContainerForIngestion { get; set; }
 
         protected Container CosmosContainer { get; set; }
 
@@ -57,9 +57,12 @@ namespace VectorIndexScenarioSuite
 
         public Scenario(IConfiguration configurations, int throughput)
         {
-            this.K_VALS = null;
+            this.K_VALS = Array.Empty<int>();
             this.Configurations = configurations;
-            this.CosmosContainerWithBulkClient = CreateOrGetCollection(throughput, true /* bulkClient */);
+
+            bool ingestWithBulkExecution = Convert.ToBoolean(this.Configurations["AppSettings:scenario:ingestWithBulkExecution"]);
+            this.CosmosContainerForIngestion = CreateOrGetCollection(throughput, ingestWithBulkExecution /* bulkClient */);
+            /* Always query with non-bulk client to measure latency appropriately */
             this.CosmosContainer = CreateOrGetCollection(throughput, false /* bulkClient */);
         }
 
@@ -121,8 +124,10 @@ namespace VectorIndexScenarioSuite
             {
                 ConnectionMode = ConnectionMode.Direct,
                 AllowBulkExecution = bulkExecution,
-                MaxRetryAttemptsOnRateLimitedRequests = 9,
-                MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(60)
+                // SDK will handle throttles and also wait for the amount of time the service tells it to wait and retry after the time has elapsed.
+                // Please see : https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/how-to-migrate-from-bulk-executor-library
+                MaxRetryAttemptsOnRateLimitedRequests = 100,
+                MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(600)
             };
 
             bool useAADAuth = Convert.ToBoolean(this.Configurations["AppSettings:useAADAuth"]);
