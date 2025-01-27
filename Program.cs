@@ -16,7 +16,7 @@ namespace VectorIndexScenarioSuite
 
             var builder = new ConfigurationBuilder()
                 .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
-                .AddJsonFile(appsettings, optional: true, reloadOnChange: false)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
                 .AddCommandLine(args);
         
             var configurations = builder.Build();

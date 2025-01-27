@@ -267,8 +267,15 @@ namespace VectorIndexScenarioSuite
                                 // Similarly, QueryMetrics is null for second and subsequent pages of query results.
                                 if (queryResponse.Diagnostics.GetQueryMetrics() != null)
                                 {
-                                    this.queryMetrics[KVal].AddServerLatencyMeasurement(
-                                        queryResponse.Diagnostics.GetQueryMetrics().CumulativeMetrics.TotalTime.TotalMilliseconds);
+                                    // add per partition server latency
+                                    foreach (var serverMetrics in queryResponse.Diagnostics.GetQueryMetrics().PartitionedMetrics)
+                                    {
+                                        this.queryMetrics[KVal].AddServerLatencyMeasurement(serverMetrics.ServerSideMetrics.TotalTime.TotalMilliseconds);
+                                    }
+
+                                    // this is total server latency
+                                    //this.queryMetrics[KVal].AddServerLatencyMeasurement(
+                                    //    queryResponse.Diagnostics.GetQueryMetrics().CumulativeMetrics.TotalTime.TotalMilliseconds);
                                 }
                             }
                         }
@@ -378,10 +385,8 @@ namespace VectorIndexScenarioSuite
 
                 // only query specific number of point if specific by the config
                 int numQueries = Convert.ToInt32(this.Configurations["AppSettings:scenario:numQueries"]);
-                if (numQueries == 0)
-                {
-                    numQueries = totalQueryVectors;
-                }
+                numQueries = numQueries == 0 ? totalQueryVectors : numQueries;
+
                 for (int kI = 0; kI < K_VALS.Length; kI++)
                 {
                     Console.WriteLine($"Performing {numQueries} queries for Recall/RU/Latency stats for K: {K_VALS[kI]}.");
