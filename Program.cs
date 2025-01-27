@@ -9,9 +9,14 @@ namespace VectorIndexScenarioSuite
         static async Task Main(string[] args)
         {
             // Setup configuration builder
+            string appsettings = "appsettings.json";
+            if (args.Length > 0) { 
+                appsettings = args[0];
+            }
+
             var builder = new ConfigurationBuilder()
                 .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+                .AddJsonFile(appsettings, optional: true, reloadOnChange: false)
                 .AddCommandLine(args);
         
             var configurations = builder.Build();

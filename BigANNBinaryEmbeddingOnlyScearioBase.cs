@@ -375,10 +375,17 @@ namespace VectorIndexScenarioSuite
                 }
 
                 int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
+
+                // only query specific number of point if specific by the config
+                int numQueries = Convert.ToInt32(this.Configurations["AppSettings:scenario:numQueries"]);
+                if (numQueries == 0)
+                {
+                    numQueries = totalQueryVectors;
+                }
                 for (int kI = 0; kI < K_VALS.Length; kI++)
                 {
-                    Console.WriteLine($"Performing {totalQueryVectors} queries for Recall/RU/Latency stats for K: {K_VALS[kI]}.");
-                    await PerformQuery(false /* isWarmup */, totalQueryVectors, K_VALS[kI] /*KVal*/, GetQueryDataPath());
+                    Console.WriteLine($"Performing {numQueries} queries for Recall/RU/Latency stats for K: {K_VALS[kI]}.");
+                    await PerformQuery(false /* isWarmup */, numQueries, K_VALS[kI] /*KVal*/, GetQueryDataPath());
                 }
             }
         }
