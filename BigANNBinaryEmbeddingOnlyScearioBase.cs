@@ -112,15 +112,15 @@ namespace VectorIndexScenarioSuite
 
         protected async Task PerformIngestion(IngestionOperationType ingestionOperationType, int? startTagId, int startVectorId, int totalVectors)
         {
-            int numBulkIngestionBatchCount = Convert.ToInt32(this.Configurations["AppSettings:scenario:numBulkIngestionBatchCount"]);
-            if (totalVectors % numBulkIngestionBatchCount != 0)
+            int numIngestionBatchCount = Convert.ToInt32(this.Configurations["AppSettings:scenario:numIngestionBatchCount"]);
+            if (totalVectors % numIngestionBatchCount != 0)
             {
-                throw new ArgumentException("Total vectors should be evenly divisible by numBulkIngestionBatchCount");
+                throw new ArgumentException("Total vectors should be evenly divisible by numIngestionBatchCount");
             }
-            int numVectorsPerRange = totalVectors / numBulkIngestionBatchCount;
+            int numVectorsPerRange = totalVectors / numIngestionBatchCount;
 
-            var tasks = new List<Task>(numBulkIngestionBatchCount);
-            for (int rangeIndex = 0; rangeIndex < numBulkIngestionBatchCount; rangeIndex++)
+            var tasks = new List<Task>(numIngestionBatchCount);
+            for (int rangeIndex = 0; rangeIndex < numIngestionBatchCount; rangeIndex++)
             {
                 int startVectorIdForRange = startVectorId + (rangeIndex * numVectorsPerRange) ;
                 Console.WriteLine(
@@ -196,13 +196,13 @@ namespace VectorIndexScenarioSuite
             switch (ingestionOperationType)
             {
                 case IngestionOperationType.Insert:
-                    return this.CosmosContainerWithBulkClient.CreateItemAsync<EmbeddingOnlyDocument>(
+                    return this.CosmosContainerForIngestion.CreateItemAsync<EmbeddingOnlyDocument>(
                         new EmbeddingOnlyDocument(cosmosDbDocAndPkIdForOperation.ToString(), vector), new PartitionKey(cosmosDbDocAndPkIdForOperation.ToString()));
                 case IngestionOperationType.Delete:
-                    return this.CosmosContainerWithBulkClient.DeleteItemAsync<EmbeddingOnlyDocument>(
+                    return this.CosmosContainerForIngestion.DeleteItemAsync<EmbeddingOnlyDocument>(
                         cosmosDbDocAndPkIdForOperation.ToString(), new PartitionKey(cosmosDbDocAndPkIdForOperation.ToString()));
                 case IngestionOperationType.Replace:
-                    return this.CosmosContainerWithBulkClient.ReplaceItemAsync<EmbeddingOnlyDocument>(
+                    return this.CosmosContainerForIngestion.ReplaceItemAsync<EmbeddingOnlyDocument>(
                         new EmbeddingOnlyDocument(cosmosDbDocAndPkIdForOperation.ToString(), vector), cosmosDbDocAndPkIdForOperation.ToString(), new PartitionKey(cosmosDbDocAndPkIdForOperation.ToString()));
                     throw new NotImplementedException("Replace not implemented yet");
                 default:
