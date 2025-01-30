@@ -101,7 +101,7 @@ namespace VectorIndexScenarioSuite
         protected abstract string EmbeddingPath { get; }
         protected abstract VectorDataType EmbeddingDataType { get; }
         protected abstract DistanceFunction EmbeddingDistanceFunction { get; }
-        protected abstract ulong EmbeddingDimensions { get; }
+        protected abstract int EmbeddingDimensions { get; }
         protected abstract int MaxPhysicalPartitionCount { get; }
         protected abstract string RunName { get; }
         protected static Guid guid = Guid.NewGuid();
@@ -357,8 +357,9 @@ namespace VectorIndexScenarioSuite
 
         private QueryDefinition ConstructQueryDefinition(int K, float[] queryVector, string where)
         {
-            string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding) AS similarityScore " +
-                $"FROM c  WHERE {where} ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false)";
+            string obj_expr = "{'searchListSizeMultiplier': 25}";
+            string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false) AS similarityScore " +
+                $"FROM c  WHERE {where} ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false, {obj_expr})";
 ;
             return new QueryDefinition(queryText).WithParameter("@vectorEmbedding", queryVector);
         }

@@ -13,7 +13,7 @@ namespace VectorIndexScenarioSuite
         protected override string EmbeddingPath => $"/{EmbeddingColumn}";
         protected override VectorDataType EmbeddingDataType => VectorDataType.Float32;
         protected override DistanceFunction EmbeddingDistanceFunction => DistanceFunction.DotProduct;
-        protected override ulong EmbeddingDimensions => 768;
+        protected override int EmbeddingDimensions => 768;
         protected override int MaxPhysicalPartitionCount => 56;
         protected override string RunName => "msmarco-embeddingonly-" + guid;
 
