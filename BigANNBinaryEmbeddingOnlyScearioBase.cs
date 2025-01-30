@@ -86,7 +86,7 @@ namespace VectorIndexScenarioSuite
                         Path = this.EmbeddingPath,
                         DataType = this.EmbeddingDataType,
                         DistanceFunction = this.EmbeddingDistanceFunction,
-                        Dimensions = this.EmbeddingDimensions,
+                        Dimensions = (int) this.EmbeddingDimensions,
                     }
                 })),
                 IndexingPolicy = new IndexingPolicy()
