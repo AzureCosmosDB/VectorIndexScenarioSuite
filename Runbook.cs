@@ -33,7 +33,7 @@ namespace VectorIndexScenarioSuite
     internal class RunbookData
     {
         [YamlMember(Alias = "operations")]
-        public Dictionary<string, Operation> Operation { get; set; }
+        public required Dictionary<string, Operation> Operation { get; set; }
 
         [YamlMember(Alias = "max_pts")]
         public int MaxPoints { get; set; }
