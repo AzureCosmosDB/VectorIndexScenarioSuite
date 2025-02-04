@@ -86,7 +86,7 @@ namespace VectorIndexScenarioSuite
                         Path = this.EmbeddingPath,
                         DataType = this.EmbeddingDataType,
                         DistanceFunction = this.EmbeddingDistanceFunction,
-                        Dimensions = this.EmbeddingDimensions,
+                        Dimensions = (int) this.EmbeddingDimensions,
                     }
                 })),
                 IndexingPolicy = new IndexingPolicy()
@@ -267,8 +267,15 @@ namespace VectorIndexScenarioSuite
                                 // Similarly, QueryMetrics is null for second and subsequent pages of query results.
                                 if (queryResponse.Diagnostics.GetQueryMetrics() != null)
                                 {
-                                    this.queryMetrics[KVal].AddServerLatencyMeasurement(
-                                        queryResponse.Diagnostics.GetQueryMetrics().CumulativeMetrics.TotalTime.TotalMilliseconds);
+                                    // add per partition server latency
+                                    foreach (var serverMetrics in queryResponse.Diagnostics.GetQueryMetrics().PartitionedMetrics)
+                                    {
+                                        this.queryMetrics[KVal].AddServerLatencyMeasurement(serverMetrics.ServerSideMetrics.TotalTime.TotalMilliseconds);
+                                    }
+
+                                    // this is total server latency
+                                    //this.queryMetrics[KVal].AddServerLatencyMeasurement(
+                                    //    queryResponse.Diagnostics.GetQueryMetrics().CumulativeMetrics.TotalTime.TotalMilliseconds);
                                 }
                             }
                         }
@@ -375,10 +382,15 @@ namespace VectorIndexScenarioSuite
                 }
 
                 int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
+
+                // only query specific number of point if specific by the config
+                int numQueries = Convert.ToInt32(this.Configurations["AppSettings:scenario:numQueries"]);
+                numQueries = numQueries == 0 ? totalQueryVectors : numQueries;
+
                 for (int kI = 0; kI < K_VALS.Length; kI++)
                 {
-                    Console.WriteLine($"Performing {totalQueryVectors} queries for Recall/RU/Latency stats for K: {K_VALS[kI]}.");
-                    await PerformQuery(false /* isWarmup */, totalQueryVectors, K_VALS[kI] /*KVal*/, GetQueryDataPath());
+                    Console.WriteLine($"Performing {numQueries} queries for Recall/RU/Latency stats for K: {K_VALS[kI]}.");
+                    await PerformQuery(false /* isWarmup */, numQueries, K_VALS[kI] /*KVal*/, GetQueryDataPath());
                 }
             }
         }
