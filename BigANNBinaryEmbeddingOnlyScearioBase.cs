@@ -165,6 +165,8 @@ namespace VectorIndexScenarioSuite
                         {
                             Path = this.EmbeddingPath,
                             Type = VectorIndexType.DiskANN,
+                            VectorIndexShardKey = ["/brand"],
+                            IndexingSearchListSize = 100,
                         }
                     }
                 }
