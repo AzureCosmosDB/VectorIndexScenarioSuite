@@ -165,8 +165,9 @@ namespace VectorIndexScenarioSuite
                         {
                             Path = this.EmbeddingPath,
                             Type = VectorIndexType.DiskANN,
-                            VectorIndexShardKey = ["/brand"],
-                            IndexingSearchListSize = 100,
+                            // not supported configuration
+                            // VectorIndexShardKey = ["/brand"],
+                            // IndexingSearchListSize = 100,
                         }
                     }
                 }
