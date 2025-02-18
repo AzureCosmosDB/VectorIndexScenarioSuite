@@ -60,10 +60,12 @@ namespace VectorIndexScenarioSuite
             this.K_VALS = Array.Empty<int>();
             this.Configurations = configurations;
 
-            bool ingestWithBulkExecution = Convert.ToBoolean(this.Configurations["AppSettings:scenario:ingestWithBulkExecution"]);
-            this.CosmosContainerForIngestion = CreateOrGetCollection(throughput, ingestWithBulkExecution /* bulkClient */);
-            /* Always query with non-bulk client to measure latency appropriately */
-            this.CosmosContainer = CreateOrGetCollection(throughput, false /* bulkClient */);
+            bool bulkExecution = Convert.ToBoolean(this.Configurations["AppSettings:scenario:BulkExecution"]);
+            this.CosmosContainerForIngestion = CreateOrGetCollection(throughput, bulkExecution /* bulkClient */);
+
+            //Always query with non-bulk client to measure latency appropriately, please turn it off in the config file
+
+            this.CosmosContainer = CreateOrGetCollection(throughput, bulkExecution /* bulkClient */);
         }
 
         public abstract void Setup();

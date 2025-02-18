@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.IO;
 
 namespace VectorIndexScenarioSuite
 {
@@ -277,6 +278,7 @@ namespace VectorIndexScenarioSuite
                                     //this.queryMetrics[KVal].AddServerLatencyMeasurement(
                                     //    queryResponse.Diagnostics.GetQueryMetrics().CumulativeMetrics.TotalTime.TotalMilliseconds);
                                 }
+
                             }
                         }
                     }
@@ -294,8 +296,10 @@ namespace VectorIndexScenarioSuite
 
         private QueryDefinition ConstructQueryDefinition(int K, float[] queryVector)
         {
-            string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding) AS similarityScore " +
-                $"FROM c ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false)";
+            int searchListSizeMultiplier = Convert.ToInt32(this.Configurations["AppSettings:scenario:searchListSizeMultiplier"]);
+            string obj_expr = $"{{ 'searchListSizeMultiplier': {searchListSizeMultiplier} }}";
+        string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding) AS similarityScore " +
+                $"FROM c ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false, {obj_expr})";
 ;
             return new QueryDefinition(queryText).WithParameter("@vectorEmbedding", queryVector);
         }
