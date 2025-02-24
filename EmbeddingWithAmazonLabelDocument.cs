@@ -2,14 +2,8 @@
 
 namespace VectorIndexScenarioSuite
 {
-    internal class EmbeddingWithAmazonLabelDocument
+    internal class EmbeddingWithAmazonLabelDocument : EmbeddingOnlyDocument
     {
-        [JsonProperty(PropertyName = "id")]
-        public string Id { get; }
-
-        [JsonProperty(PropertyName = "embedding")]
-        private float[] Embedding { get; }
-
         [JsonProperty(PropertyName = "brand")]
         private string Brand { get; }
 
@@ -21,10 +15,9 @@ namespace VectorIndexScenarioSuite
         [JsonProperty(PropertyName = "category")]
         private string[] Category { get; }
 
-        public EmbeddingWithAmazonLabelDocument(string id, float[] embedding, string brand, string rating, string[] category) 
+        public EmbeddingWithAmazonLabelDocument(string id, float[] embedding, string brand, string rating, string[] category)
+            : base(id, embedding) // Call the base class constructor
         {
-            this.Id = id;
-            this.Embedding = embedding;
             this.Brand = brand;
             this.Rating = rating;
             this.Category = category;

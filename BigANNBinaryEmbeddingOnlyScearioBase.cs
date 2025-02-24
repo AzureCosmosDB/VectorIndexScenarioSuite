@@ -82,7 +82,7 @@ namespace VectorIndexScenarioSuite
                         {
                             Path = this.EmbeddingPath,
                             Type = VectorIndexType.DiskANN,
-                            // not supported configuration
+                            // TODO: not supported configuration, need to update the SDK to support it
                             // VectorIndexShardKey = ["/brand"],
                             // IndexingSearchListSize = 100,
                         }
