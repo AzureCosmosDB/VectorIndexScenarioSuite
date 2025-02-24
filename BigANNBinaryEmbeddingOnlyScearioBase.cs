@@ -1,93 +1,10 @@
 ﻿using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 
 namespace VectorIndexScenarioSuite
 {
-    internal class EmbeddingOnlyDocument
-    {
-         [JsonProperty(PropertyName = "id")]
-        public string Id { get; }
-
-         [JsonProperty(PropertyName = "embedding")]
-        private float[] Embedding { get; }
-
-        public EmbeddingOnlyDocument(string id, float[] embedding)
-        {
-            this.Id = id;
-            this.Embedding = embedding;
-        }
-    }
-
-    internal class EmbeddingWithAmazonLabelDocument
-    {
-        [JsonProperty(PropertyName = "id")]
-        public string Id { get; }
-
-        [JsonProperty(PropertyName = "embedding")]
-        private float[] Embedding { get; }
-
-        [JsonProperty(PropertyName = "brand")]
-        private string Brand { get; }
-
-        //ratting 
-        [JsonProperty(PropertyName = "rating")]
-        private string Rating { get; }
-
-        // category
-        [JsonProperty(PropertyName = "category")]
-        private string[] Category { get; }
-
-        public EmbeddingWithAmazonLabelDocument(string id, float[] embedding, string brand, string rating, string[] category) 
-        {
-            this.Id = id;
-            this.Embedding = embedding;
-            this.Brand = brand;
-            this.Rating = rating;
-            this.Category = category;
-        }
-    }
-    internal static class LabelParser
-    {
-        public static Dictionary<string, object> ParseLineToJson(string line)
-        {
-            var result = new Dictionary<string, object>();
-            var parts = line.Split(',');
-            result["category"] = new List<string>();
-
-            foreach (var part in parts)
-            {
-                var keyValue = part.Split('=');
-                if (keyValue.Length == 2)
-                {
-                    var key = keyValue[0];
-                    var value = keyValue[1];
-
-                    if (key == "CAT")
-                    {
-                        if (!result.ContainsKey("category"))
-                        {
-                            result["category"] = new List<string>();
-                        }
-                        ((List<string>)result["category"]).Add(value);
-                    }
-                    else if (key == "BRAND")
-                    {
-                        result["brand"] = value;
-                    }
-                    else if (key == "RATING")
-                    {
-                        result["rating"] = value;
-                    }
-                }
-            }
-
-            return result;
-        }
-    }
-
 
     abstract class BigANNBinaryEmbeddingOnlyScearioBase : Scenario
     {
