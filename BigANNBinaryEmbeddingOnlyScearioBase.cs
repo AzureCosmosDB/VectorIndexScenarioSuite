@@ -9,10 +9,10 @@ namespace VectorIndexScenarioSuite
 {
     internal class EmbeddingOnlyDocument
     {
-         [JsonProperty(PropertyName = "id")]
+        [JsonProperty(PropertyName = "id")]
         public string Id { get; }
 
-         [JsonProperty(PropertyName = "embedding")]
+        [JsonProperty(PropertyName = "embedding")]
         private float[] Embedding { get; }
 
         public EmbeddingOnlyDocument(string id, float[] embedding)
@@ -50,18 +50,18 @@ namespace VectorIndexScenarioSuite
 
         protected ScenarioMetrics ingestionMetrics;
 
-        public BigANNBinaryEmbeddingOnlyScearioBase(IConfiguration configurations, int throughPut) : 
+        public BigANNBinaryEmbeddingOnlyScearioBase(IConfiguration configurations, int throughPut) :
             base(configurations, throughPut)
         {
             this.SliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);
             this.queryRecallResults = new ConcurrentDictionary<int, ConcurrentDictionary<string, List<IdWithSimilarityScore>>>();
             this.queryMetrics = new ConcurrentDictionary<int, ScenarioMetrics>();
 
-            this.K_VALS = configurations.GetSection("AppSettings:scenario:kValues").Get<int[]>() ?? 
+            this.K_VALS = configurations.GetSection("AppSettings:scenario:kValues").Get<int[]>() ??
                 throw new ArgumentNullException("AppSettings:scenario:kValues");
             this.ingestionMetrics = new ScenarioMetrics(0);
 
-            for(int kI = 0; kI < K_VALS.Length; kI++)
+            for (int kI = 0; kI < K_VALS.Length; kI++)
             {
                 this.queryRecallResults.TryAdd(K_VALS[kI], new ConcurrentDictionary<string, List<IdWithSimilarityScore>>());
                 this.queryMetrics.TryAdd(K_VALS[kI], new ScenarioMetrics(0));
@@ -70,7 +70,7 @@ namespace VectorIndexScenarioSuite
 
         protected string GetQueryDataPath()
         {
-            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
+            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ??
                 throw new ArgumentNullException("AppSettings:dataFilesBasePath");
             string fileName = $"{this.QueryFile}.{this.BinaryFileExt}";
             return Path.Combine(directory, fileName);
@@ -103,7 +103,7 @@ namespace VectorIndexScenarioSuite
                 }
             };
 
-            properties.IndexingPolicy.IncludedPaths.Add(new IncludedPath{ Path = "/" });
+            properties.IndexingPolicy.IncludedPaths.Add(new IncludedPath { Path = "/" });
 
             // Add EMBEDDING_PATH to excluded paths for scalar indexing.
             properties.IndexingPolicy.ExcludedPaths.Add(new ExcludedPath { Path = this.EmbeddingPath + "/*" });
@@ -123,7 +123,7 @@ namespace VectorIndexScenarioSuite
             var tasks = new List<Task>(numIngestionBatchCount);
             for (int rangeIndex = 0; rangeIndex < numIngestionBatchCount; rangeIndex++)
             {
-                int startVectorIdForRange = startVectorId + (rangeIndex * numVectorsPerRange) ;
+                int startVectorIdForRange = startVectorId + (rangeIndex * numVectorsPerRange);
                 Console.WriteLine(
                     $"Starting ingestion for operation {ingestionOperationType.ToString()}, range: {rangeIndex} with start vectorId: [{startVectorIdForRange}, " +
                     $"{startVectorIdForRange + numVectorsPerRange})");
@@ -137,7 +137,7 @@ namespace VectorIndexScenarioSuite
         {
             // The batches that the SDK creates to optimize throughput have a current maximum of 2Mb or 100 operations per batch, 
             List<Task> ingestTasks = new List<Task>(COSMOSDB_MAX_BATCH_SIZE);
-            string errorLogBasePath = this.Configurations["AppSettings:errorLogBasePath"] ?? 
+            string errorLogBasePath = this.Configurations["AppSettings:errorLogBasePath"] ??
                 throw new ArgumentNullException("AppSettings:errorLogBasePath");
             string logFilePath = Path.Combine(errorLogBasePath, $"{this.RunName}-ingest.log");
 
@@ -213,7 +213,10 @@ namespace VectorIndexScenarioSuite
 
         protected async Task PerformQuery(bool isWarmup, int numQueries, int KVal, string dataPath)
         {
-            await foreach ((int vectorId, float[] vector) in 
+            // Issue parallel queries to all partitions, capping this to MAX_PHYSICAL_PARTITION_COUNT but can be tuned based on change in setup.
+            int overrideMaxConcurrancy = Convert.ToInt32(this.Configurations["AppSettings:scenario:MaxPhysicalPartitionCount"]);
+            int maxConcurrancy = overrideMaxConcurrancy == 0 ? this.MaxPhysicalPartitionCount : overrideMaxConcurrancy;
+            await foreach ((int vectorId, float[] vector) in
                 BigANNBinaryFormat.GetBinaryDataAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries))
             {
                 var queryDefinition = ConstructQueryDefinition(KVal, vector);
@@ -221,10 +224,9 @@ namespace VectorIndexScenarioSuite
                 bool retryQueryOnFailureForLatencyMeasurement;
                 do
                 {
-                    FeedIterator<IdWithSimilarityScore> queryResultSetIterator = 
-                        this.CosmosContainer.GetItemQueryIterator<IdWithSimilarityScore>(queryDefinition,
-                        // Issue parallel queries to all partitions, capping this to MAX_PHYSICAL_PARTITION_COUNT but can be tuned based on change in setup.
-                        requestOptions: new QueryRequestOptions { MaxConcurrency = (this.MaxPhysicalPartitionCount) });
+                    FeedIterator<IdWithSimilarityScore> queryResultSetIterator =
+                        this.CosmosContainerForQuery.GetItemQueryIterator<IdWithSimilarityScore>(queryDefinition,
+                requestOptions: new QueryRequestOptions { MaxConcurrency = maxConcurrancy });
 
                     retryQueryOnFailureForLatencyMeasurement = false;
                     while (queryResultSetIterator.HasMoreResults)
@@ -290,33 +292,36 @@ namespace VectorIndexScenarioSuite
                         Console.WriteLine($"Finished querying {percentage.ToString("F2")}% ");
                     }
                 }
-                while ( retryQueryOnFailureForLatencyMeasurement );
+                while (retryQueryOnFailureForLatencyMeasurement);
             }
         }
 
         private QueryDefinition ConstructQueryDefinition(int K, float[] queryVector)
         {
             int searchListSizeMultiplier = Convert.ToInt32(this.Configurations["AppSettings:scenario:searchListSizeMultiplier"]);
-            string obj_expr = $"{{ 'searchListSizeMultiplier': {searchListSizeMultiplier} }}";
-        string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding) AS similarityScore " +
+
+            // empty json object for using default value if multiplier is 0
+            string obj_expr = searchListSizeMultiplier == 0 ? "{}" : $"{{ 'searchListSizeMultiplier': {searchListSizeMultiplier} }}";
+
+            string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding) AS similarityScore " +
                 $"FROM c ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false, {obj_expr})";
-;
+            ;
             return new QueryDefinition(queryText).WithParameter("@vectorEmbedding", queryVector);
         }
 
         private string GetBaseDataPath()
         {
-            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
+            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ??
                 throw new ArgumentNullException("AppSettings:dataFilesBasePath");
 
-            
+
             string fileName = $"{this.BaseDataFile}_{this.SliceCount}.{this.BinaryFileExt}";
             return Path.Combine(directory, fileName);
         }
 
         protected virtual string GetGroundTruthDataPath()
         {
-            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
+            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ??
                 throw new ArgumentNullException("AppSettings:dataFilesBasePath");
             string fileName = $"{this.GetGroundTruthFileName}_{this.SliceCount}";
             return Path.Combine(directory, fileName);
@@ -327,7 +332,7 @@ namespace VectorIndexScenarioSuite
          */
         protected virtual string GetGroundTruthDataPath(int stepNumber)
         {
-            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
+            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ??
                 throw new ArgumentNullException("AppSettings:dataFilesBasePath");
 
             string fileName = $"step{stepNumber}.gt100";
@@ -336,7 +341,7 @@ namespace VectorIndexScenarioSuite
 
         private void ComputeLatencyAndRUStats(bool runIngestion, bool runQuery)
         {
-            if(runIngestion)
+            if (runIngestion)
             {
                 Console.WriteLine($"Ingestion Metrics:");
                 Console.WriteLine($"RU Consumption: {this.ingestionMetrics.GetRequestUnitStatistics()}");
@@ -346,7 +351,7 @@ namespace VectorIndexScenarioSuite
             {
                 Console.WriteLine($"Query Metrics:");
 
-                for(int kI = 0; kI < K_VALS.Length; kI++)
+                for (int kI = 0; kI < K_VALS.Length; kI++)
                 {
                     int kVal = K_VALS[kI];
                     Console.WriteLine($"K = {kVal}");
@@ -365,9 +370,9 @@ namespace VectorIndexScenarioSuite
              * 1) Bulk Ingest 'scenario:slice' number of documents into Cosmos container.
              * 2) Query Cosmos container for a query-set and calculate recall for Nearest Neighbor search.
              */
-             bool runIngestion = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runIngestion"]);
+            bool runIngestion = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runIngestion"]);
 
-            if(runIngestion) 
+            if (runIngestion)
             {
                 int totalVectors = Convert.ToInt32(this.Configurations["AppSettings:scenario:sliceCount"]);
                 await PerformIngestion(IngestionOperationType.Insert, null /* startTagId */, 0 /* startVectorId */, totalVectors);
@@ -375,7 +380,7 @@ namespace VectorIndexScenarioSuite
 
             bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
 
-            if(runQuery)
+            if (runQuery)
             {
                 bool performWarmup = Convert.ToBoolean(this.Configurations["AppSettings:scenario:warmup:enabled"]);
                 if (performWarmup)
@@ -427,108 +432,108 @@ namespace VectorIndexScenarioSuite
                 switch (operation.Name)
                 {
                     case "insert":
-                    {
-                        int startVectorId = operation.Start ?? throw new MissingFieldException("Start missing for insert.");
-                        int endVectorId = operation.End ?? throw new MissingFieldException("End missing for insert.");
-                        int numVectors = (endVectorId - startVectorId);
-                        if (runIngestion && (operationId >= startOperationId))
                         {
-                            await PerformIngestion(IngestionOperationType.Insert, null /*startTagId */, startVectorId, numVectors);
-                        }
-
-                        totalVectorsInserted += numVectors;
-
-                        // Count insert step even if we skipped it as from runbook execution perspective, it was still done before.
-                        insertSteps++;
-                        break;
-                    }
-                    case "search":
-                    {  
-                        // No warmup logic added for now as this scenario is focused on recall.
-                        if (runQuery && (operationId >= startOperationId))
-                        {
-                            // Reset queryRecallResults for each step.
-                            // Query metrics are not reset as they are cumulative across steps.
-                            this.queryRecallResults = 
-                                    new ConcurrentDictionary<int, ConcurrentDictionary<string, List<IdWithSimilarityScore>>>();
-
-                            int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
-                            for (int kI = 0; kI < K_VALS.Length; kI++)
+                            int startVectorId = operation.Start ?? throw new MissingFieldException("Start missing for insert.");
+                            int endVectorId = operation.End ?? throw new MissingFieldException("End missing for insert.");
+                            int numVectors = (endVectorId - startVectorId);
+                            if (runIngestion && (operationId >= startOperationId))
                             {
-                                Console.WriteLine($"Performing {totalQueryVectors} queries for Recall/RU/Latency stats for K: {K_VALS[kI]}.");
-                                this.queryRecallResults.TryAdd(K_VALS[kI], new ConcurrentDictionary<string, List<IdWithSimilarityScore>>());
-                                await PerformQuery(false /* isWarmup */, totalQueryVectors, K_VALS[kI] /*KVal*/, GetQueryDataPath());
+                                await PerformIngestion(IngestionOperationType.Insert, null /*startTagId */, startVectorId, numVectors);
                             }
 
-                            // Compute Recall
-                            bool computeRecall = Convert.ToBoolean(this.Configurations["AppSettings:scenario:computeRecall"]);
-                            if (computeRecall)
-                            {
-                                Console.WriteLine("Computing Recall.");
-                                GroundTruthValidator groundTruthValidator = new GroundTruthValidator(
-                                    GroundTruthFileType.Binary,
-                                    GetGroundTruthDataPath(operationId));
+                            totalVectorsInserted += numVectors;
 
+                            // Count insert step even if we skipped it as from runbook execution perspective, it was still done before.
+                            insertSteps++;
+                            break;
+                        }
+                    case "search":
+                        {
+                            // No warmup logic added for now as this scenario is focused on recall.
+                            if (runQuery && (operationId >= startOperationId))
+                            {
+                                // Reset queryRecallResults for each step.
+                                // Query metrics are not reset as they are cumulative across steps.
+                                this.queryRecallResults =
+                                        new ConcurrentDictionary<int, ConcurrentDictionary<string, List<IdWithSimilarityScore>>>();
+
+                                int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
                                 for (int kI = 0; kI < K_VALS.Length; kI++)
                                 {
-                                    int kVal = K_VALS[kI];
-                                    float recall = groundTruthValidator.ComputeRecall(kVal, this.queryRecallResults[kVal]);
+                                    Console.WriteLine($"Performing {totalQueryVectors} queries for Recall/RU/Latency stats for K: {K_VALS[kI]}.");
+                                    this.queryRecallResults.TryAdd(K_VALS[kI], new ConcurrentDictionary<string, List<IdWithSimilarityScore>>());
+                                    await PerformQuery(false /* isWarmup */, totalQueryVectors, K_VALS[kI] /*KVal*/, GetQueryDataPath());
+                                }
 
-                                    Console.WriteLine($"Recall for K = {kVal} is {recall}.");
+                                // Compute Recall
+                                bool computeRecall = Convert.ToBoolean(this.Configurations["AppSettings:scenario:computeRecall"]);
+                                if (computeRecall)
+                                {
+                                    Console.WriteLine("Computing Recall.");
+                                    GroundTruthValidator groundTruthValidator = new GroundTruthValidator(
+                                        GroundTruthFileType.Binary,
+                                        GetGroundTruthDataPath(operationId));
+
+                                    for (int kI = 0; kI < K_VALS.Length; kI++)
+                                    {
+                                        int kVal = K_VALS[kI];
+                                        float recall = groundTruthValidator.ComputeRecall(kVal, this.queryRecallResults[kVal]);
+
+                                        Console.WriteLine($"Recall for K = {kVal} is {recall}.");
+                                    }
                                 }
                             }
-                        }
 
-                        // Count search step even if we skipped it as from runbook execution perspective, it was still done before.
-                        searchSteps++;
-                        break;
-                    }
+                            // Count search step even if we skipped it as from runbook execution perspective, it was still done before.
+                            searchSteps++;
+                            break;
+                        }
                     case "delete":
-                    {
-                        int start = operation.Start ?? throw new MissingFieldException("Start missing for delete.");
-                        int end = operation.End ?? throw new MissingFieldException("End missing for delete.");
-                        int numVectors = (end - start);
-
-                        if (runIngestion && (operationId >= startOperationId))
                         {
-                            await PerformIngestion(IngestionOperationType.Delete, null /* startTagId */, start, numVectors);
-                        }
-                        totalVectorsDeleted += numVectors;
+                            int start = operation.Start ?? throw new MissingFieldException("Start missing for delete.");
+                            int end = operation.End ?? throw new MissingFieldException("End missing for delete.");
+                            int numVectors = (end - start);
 
-                        // Count delete step even if we skipped it as from runbook execution perspective, it was still done before.
-                        deleteSteps++;
-                        break;
-                    }
+                            if (runIngestion && (operationId >= startOperationId))
+                            {
+                                await PerformIngestion(IngestionOperationType.Delete, null /* startTagId */, start, numVectors);
+                            }
+                            totalVectorsDeleted += numVectors;
+
+                            // Count delete step even if we skipped it as from runbook execution perspective, it was still done before.
+                            deleteSteps++;
+                            break;
+                        }
                     case "replace":
-                    {
-                        int tagsStart = operation.TagsStart ?? throw new MissingFieldException("TagStart missing for replace.");
-                        int tagsEnd = operation.TagsEnd ?? throw new MissingFieldException("TagEnd missing for replace.");
-
-                        int vectorIdsStart = operation.IdsStart ?? throw new MissingFieldException("IdsStart missing for replace.");
-                        int vectorIdsEnd = operation.IdsEnd ?? throw new MissingFieldException("IdsEnd missing for replace.");
-                         
-                        int numVectors = (vectorIdsEnd - vectorIdsStart);
-                        int numTags = (tagsEnd - tagsStart);
-
-                        if (numTags != numVectors)
                         {
-                            throw new ArgumentException("Number of tags and vectors should be equal for replace operation.");
-                        }
+                            int tagsStart = operation.TagsStart ?? throw new MissingFieldException("TagStart missing for replace.");
+                            int tagsEnd = operation.TagsEnd ?? throw new MissingFieldException("TagEnd missing for replace.");
 
-                        if (runIngestion && (operationId >= startOperationId))
-                        {
-                            await PerformIngestion(IngestionOperationType.Replace, tagsStart, vectorIdsStart, numVectors);
-                        }
-                        totalVectorsReplaced += numVectors;
+                            int vectorIdsStart = operation.IdsStart ?? throw new MissingFieldException("IdsStart missing for replace.");
+                            int vectorIdsEnd = operation.IdsEnd ?? throw new MissingFieldException("IdsEnd missing for replace.");
 
-                        // Count replace step even if we skipped it as from runbook execution perspective, it was still done before.
-                        replaceSteps++;
-                        break;
-                    }
+                            int numVectors = (vectorIdsEnd - vectorIdsStart);
+                            int numTags = (tagsEnd - tagsStart);
+
+                            if (numTags != numVectors)
+                            {
+                                throw new ArgumentException("Number of tags and vectors should be equal for replace operation.");
+                            }
+
+                            if (runIngestion && (operationId >= startOperationId))
+                            {
+                                await PerformIngestion(IngestionOperationType.Replace, tagsStart, vectorIdsStart, numVectors);
+                            }
+                            totalVectorsReplaced += numVectors;
+
+                            // Count replace step even if we skipped it as from runbook execution perspective, it was still done before.
+                            replaceSteps++;
+                            break;
+                        }
                     default:
-                    {
-                        throw new InvalidOperationException($"Invalid operation {operation.Name} in runbook.");
-                    }
+                        {
+                            throw new InvalidOperationException($"Invalid operation {operation.Name} in runbook.");
+                        }
                 }
 
                 Console.WriteLine($"Executed Operation: {operation.Name} with OperationId: {operationId}");
