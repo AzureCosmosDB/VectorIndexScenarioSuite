@@ -14,7 +14,7 @@ namespace VectorIndexScenarioSuite
         protected override VectorDataType EmbeddingDataType => VectorDataType.Float32;
         protected override DistanceFunction EmbeddingDistanceFunction => DistanceFunction.Euclidean;
         protected override ulong EmbeddingDimensions => 100;
-        protected override int MaxPhysicalPartitionCount => Convert.ToInt32(this.Configurations["AppSettings:scenario:MaxPhysicalPartitionCount"]);
+        protected override int MaxPhysicalPartitionCount => 56;
         protected override string RunName => "msturing-embeddingonly-" + guid;
 
         public MSTuringEmbeddingOnlyScenario(IConfiguration configurations) : 
