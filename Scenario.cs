@@ -51,7 +51,7 @@ namespace VectorIndexScenarioSuite
 
         protected Container CosmosContainerForIngestion { get; set; }
 
-        protected Container CosmosContainer { get; set; }
+        protected Container CosmosContainerForQuery { get; set; }
 
         protected int[] K_VALS { get; set; } 
 
@@ -60,10 +60,11 @@ namespace VectorIndexScenarioSuite
             this.K_VALS = Array.Empty<int>();
             this.Configurations = configurations;
 
-            bool ingestWithBulkExecution = Convert.ToBoolean(this.Configurations["AppSettings:scenario:ingestWithBulkExecution"]);
-            this.CosmosContainerForIngestion = CreateOrGetCollection(throughput, ingestWithBulkExecution /* bulkClient */);
-            /* Always query with non-bulk client to measure latency appropriately */
-            this.CosmosContainer = CreateOrGetCollection(throughput, false /* bulkClient */);
+            bool bulkIngestion = Convert.ToBoolean(this.Configurations["AppSettings:scenario:BulkIngestion"]);
+            this.CosmosContainerForIngestion = CreateOrGetCollection(throughput, bulkIngestion /* bulkClient */);
+
+            //Always query with non-bulk client to measure latency appropriately, please turn it off in the config file
+            this.CosmosContainerForQuery = CreateOrGetCollection(throughput, false /* bulkClient */);
         }
 
         public abstract void Setup();
@@ -102,7 +103,7 @@ namespace VectorIndexScenarioSuite
             {
                 throughput = final_RUValue; // override the throughput value from the config file
             }
-            await this.CosmosContainer.ReplaceThroughputAsync(throughput);
+            await this.CosmosContainerForQuery.ReplaceThroughputAsync(throughput);
         }
 
         protected async Task LogErrorToFile(string filePath, string message)
