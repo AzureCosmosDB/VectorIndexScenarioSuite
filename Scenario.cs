@@ -63,7 +63,7 @@ namespace VectorIndexScenarioSuite
             bool bulkIngestion = Convert.ToBoolean(this.Configurations["AppSettings:scenario:BulkIngestion"]);
             this.CosmosContainerForIngestion = CreateOrGetCollection(throughput, bulkIngestion /* bulkClient */);
 
-            //Always query with non-bulk client to measure latency appropriately, please turn it off in the config file
+            //Always query with non-bulk client to measure latency appropriately
             this.CosmosContainerForQuery = CreateOrGetCollection(throughput, false /* bulkClient */);
         }
 
@@ -103,7 +103,7 @@ namespace VectorIndexScenarioSuite
             {
                 throughput = final_RUValue; // override the throughput value from the config file
             }
-            await this.CosmosContainerForQuery.ReplaceThroughputAsync(throughput);
+            await this.CosmosContainerForIngestion.ReplaceThroughputAsync(throughput);
         }
 
         protected async Task LogErrorToFile(string filePath, string message)

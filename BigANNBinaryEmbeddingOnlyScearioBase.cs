@@ -280,7 +280,6 @@ namespace VectorIndexScenarioSuite
                                     //this.queryMetrics[KVal].AddServerLatencyMeasurement(
                                     //    queryResponse.Diagnostics.GetQueryMetrics().CumulativeMetrics.TotalTime.TotalMilliseconds);
                                 }
-
                             }
                         }
                     }
