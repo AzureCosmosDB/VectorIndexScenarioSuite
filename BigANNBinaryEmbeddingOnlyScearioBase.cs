@@ -212,7 +212,10 @@ namespace VectorIndexScenarioSuite
 
         protected async Task PerformQuery(bool isWarmup, int numQueries, int KVal, string dataPath)
         {
-            await foreach ((int vectorId, float[] vector) in 
+            // Issue parallel queries to all partitions, capping this to MAX_PHYSICAL_PARTITION_COUNT but can be override through config.
+            int overrideMaxConcurrancy = Convert.ToInt32(this.Configurations["AppSettings:scenario:MaxPhysicalPartitionCount"]);
+            int maxConcurrancy = overrideMaxConcurrancy == 0 ? this.MaxPhysicalPartitionCount : overrideMaxConcurrancy;
+            await foreach ((int vectorId, float[] vector) in
                 BigANNBinaryFormat.GetBinaryDataAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries))
             {
                 var queryDefinition = ConstructQueryDefinition(KVal, vector);
@@ -220,10 +223,9 @@ namespace VectorIndexScenarioSuite
                 bool retryQueryOnFailureForLatencyMeasurement;
                 do
                 {
-                    FeedIterator<IdWithSimilarityScore> queryResultSetIterator = 
-                        this.CosmosContainer.GetItemQueryIterator<IdWithSimilarityScore>(queryDefinition,
-                        // Issue parallel queries to all partitions, capping this to MAX_PHYSICAL_PARTITION_COUNT but can be tuned based on change in setup.
-                        requestOptions: new QueryRequestOptions { MaxConcurrency = (this.MaxPhysicalPartitionCount) });
+                    FeedIterator<IdWithSimilarityScore> queryResultSetIterator =
+                        this.CosmosContainerForQuery.GetItemQueryIterator<IdWithSimilarityScore>(queryDefinition,
+                requestOptions: new QueryRequestOptions { MaxConcurrency = maxConcurrancy });
 
                     retryQueryOnFailureForLatencyMeasurement = false;
                     while (queryResultSetIterator.HasMoreResults)
@@ -294,8 +296,13 @@ namespace VectorIndexScenarioSuite
 
         private QueryDefinition ConstructQueryDefinition(int K, float[] queryVector)
         {
+            int searchListSizeMultiplier = Convert.ToInt32(this.Configurations["AppSettings:scenario:searchListSizeMultiplier"]);
+
+            // empty json object for using default value if multiplier is 0
+            string obj_expr = searchListSizeMultiplier == 0 ? "{}" : $"{{ 'searchListSizeMultiplier': {searchListSizeMultiplier} }}";
+
             string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding) AS similarityScore " +
-                $"FROM c ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false)";
+                $"FROM c ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false, {obj_expr})";
 ;
             return new QueryDefinition(queryText).WithParameter("@vectorEmbedding", queryVector);
         }
