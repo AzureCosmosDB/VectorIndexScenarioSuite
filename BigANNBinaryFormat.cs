@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 
 namespace VectorIndexScenarioSuite
 {
@@ -116,6 +117,37 @@ namespace VectorIndexScenarioSuite
             }
         }
 
+        public static async IAsyncEnumerable<(int, float[])> GetBinaryDataAsync(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead)
+        {
+            // Read the header to get the number of vectors and dimensions
+            (int totalNumberOfVectors, int dimensions, int headerSize) = GetBinaryDataHeader(filePath);
+            int vectorSizeInBytes = dimensions * dataType.Size();
+
+            using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true))
+            {
+                // Seek to the start of the binary data
+                long vectorFileOffset = (long)headerSize + ((long)startVectorId * vectorSizeInBytes);
+                fileStream.Seek(vectorFileOffset, SeekOrigin.Begin);
+
+                // If we start at vector 10 and want to read 2 vectors, we will read vectors 10 and 11 i.e < 12.
+                int endVectorId = startVectorId + numVectorsToRead;
+                int finalVectorId = Math.Min(endVectorId, totalNumberOfVectors);
+
+                for (int currentId = startVectorId; currentId < finalVectorId; currentId++)
+                {
+                    float[] vector = new float[dimensions];
+                    for (int d = 0; d < dimensions; d++)
+                    {
+                        var buffer = new byte[sizeof(float)];
+                        await fileStream.ReadAsync(buffer, 0, sizeof(float));
+                        vector[d] = BitConverter.ToSingle(buffer, 0);
+                    }
+
+                    yield return (currentId, vector);
+                }
+            }
+        }
+
         public static async IAsyncEnumerable<(int, float[], string)> GetBinaryDataWithLabelAsync(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead)
         {
             // Read the header to get the number of vectors and dimensions
@@ -159,5 +191,22 @@ namespace VectorIndexScenarioSuite
             }
         }
 
+        public static async IAsyncEnumerable<EmbeddingOnlyDocument> GetDocumentAsync(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead, bool includeLabel)
+        {
+            if (includeLabel)
+            {
+                await foreach (var item in GetBinaryDataWithLabelAsync(filePath, dataType, startVectorId, numVectorsToRead))
+                {
+                    yield return new EmbeddingWithAmazonLabelDocument(item.Item1.ToString(), item.Item2, item.Item3);
+                }
+            }
+            else
+            {
+                await foreach (var item in GetBinaryDataAsync(filePath, dataType, startVectorId, numVectorsToRead))
+                {
+                    yield return new EmbeddingOnlyDocument(item.Item1.ToString(), item.Item2);
+                }
+            }
+        }
     }
 }
