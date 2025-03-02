@@ -2,11 +2,11 @@
 
 namespace VectorIndexScenarioSuite
 {
-    internal class WikiCohereEnglishEmbeddingOnly35MStreamingScenario : WikiCohereEnglishEmbeddingBase
+    internal class WikiCohereEnglishEmbeddingOnly35MDeleteStreamingScenario : WikiCohereEnglishEmbeddingBase
     {
-        protected override string RunName => "wiki-cohere-english-embedding-only-35M-streaming-" + guid;
+        protected override string RunName => "wiki-cohere-english-embedding-only-35M-delete-streaming-" + guid;
 
-        public WikiCohereEnglishEmbeddingOnly35MStreamingScenario(IConfiguration configurations) : 
+        public WikiCohereEnglishEmbeddingOnly35MDeleteStreamingScenario(IConfiguration configurations) : 
             base(configurations, DefaultInitialAndFinalThroughput(configurations).Item1)
         { }
 
@@ -25,6 +25,15 @@ namespace VectorIndexScenarioSuite
             // Setup the scenario with 10physical partitions and 100K RU/s.
             // Partition count = ceil(RUs / 6000)
             return (60000, 100000);
+        }
+
+        protected override string GetGroundTruthDataPath(int stepNumber)
+        {
+            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
+                throw new ArgumentNullException("AppSettings:dataFilesBasePath");
+
+            string fileName = $"wikipedia-35M_expirationtime_runbook_data\\step{stepNumber}.gt100";
+            return Path.Combine(directory, fileName);
         }
 
         public override void Stop()

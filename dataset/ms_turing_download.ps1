@@ -22,6 +22,8 @@ if (-not $skipDownload)
    
     Invoke-WebRequest "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/msturing-gt-100M" -OutFile $destinationFolder\ground_truth_100000000
 
+    Invoke-WebRequest "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/query_gt100.bin" -OutFile $destinationFolder\ground_truth_1000000000
+
     # Query file
     Invoke-WebRequest "https://comp21storage.z5.web.core.windows.net/comp21/MSFT-TURING-ANNS/query100K.fbin" -OutFile $destinationFolder\query.fbin
 
