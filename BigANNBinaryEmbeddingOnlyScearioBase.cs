@@ -197,23 +197,21 @@ namespace VectorIndexScenarioSuite
 
         protected async Task PerformQuery(bool isWarmup, int numQueries, int KVal, string dataPath)
         {
-            if(!isWarmup)
+            // Issue parallel queries to all partitions, capping this to MAX_PHYSICAL_PARTITION_COUNT but can be override through config.
+            int overrideMaxConcurrancy = Convert.ToInt32(this.Configurations["AppSettings:scenario:MaxPhysicalPartitionCount"]);
+            int maxConcurrancy = overrideMaxConcurrancy == 0 ? this.MaxPhysicalPartitionCount : overrideMaxConcurrancy;
+            await foreach ((int vectorId, float[] vector, string whereClause) in
+                BigANNBinaryFormat.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries, IsA))
             {
-                this.queryMetrics[KVal] = new ScenarioMetrics(numQueries);
-            }
-            await foreach ((int vectorId, float[] vector, string label) in 
-                BigANNBinaryFormat.GetBinaryDataWithLabelAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries))
-            {
-                string where = QueryParser.ToWhereStatement(QueryParser.FromQuery(label));
-                var queryDefinition = ConstructQueryDefinition(KVal, vector, where);
+
+                var queryDefinition = ConstructQueryDefinition(KVal, vector, whereClause);
 
                 bool retryQueryOnFailureForLatencyMeasurement;
                 do
                 {
-                    FeedIterator<IdWithSimilarityScore> queryResultSetIterator = 
-                        this.CosmosContainer.GetItemQueryIterator<IdWithSimilarityScore>(queryDefinition,
-                        // Issue parallel queries to all partitions, capping this to MAX_PHYSICAL_PARTITION_COUNT but can be tuned based on change in setup.
-                        requestOptions: new QueryRequestOptions { MaxConcurrency = (this.MaxPhysicalPartitionCount) });
+                    FeedIterator<IdWithSimilarityScore> queryResultSetIterator =
+                        this.CosmosContainerForQuery.GetItemQueryIterator<IdWithSimilarityScore>(queryDefinition,
+                requestOptions: new QueryRequestOptions { MaxConcurrency = maxConcurrancy });
 
                     retryQueryOnFailureForLatencyMeasurement = false;
                     while (queryResultSetIterator.HasMoreResults)
@@ -284,9 +282,8 @@ namespace VectorIndexScenarioSuite
 
         private QueryDefinition ConstructQueryDefinition(int K, float[] queryVector, string where)
         {
-            string obj_expr = "{'searchListSizeMultiplier': 25}";
-            string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false) AS similarityScore " +
-                $"FROM c  WHERE {where} ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false, {obj_expr})";
+            string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding) AS similarityScore " +
+                $"FROM c {where} ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false)";
 ;
             return new QueryDefinition(queryText).WithParameter("@vectorEmbedding", queryVector);
         }

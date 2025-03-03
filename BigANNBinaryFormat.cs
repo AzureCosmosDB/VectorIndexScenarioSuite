@@ -208,5 +208,37 @@ namespace VectorIndexScenarioSuite
                 }
             }
         }
+
+        /// <summary>
+        /// Get query data from the binary file.
+        /// </summary>
+        /// <param name="filePath">data file</param>
+        /// <param name="dataType">data type</param>
+        /// <param name="startVectorId">start vector id </param>
+        /// <param name="numVectorsToRead">number to read</param>
+        /// <param name="includeLabel">read label data</param>
+        /// <returns>
+        ///  vector id, vector data, label(to where statement)
+        /// 
+        /// </returns>
+        public static async IAsyncEnumerable<(int, float[], string)> GetQueryAsync(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead, bool includeLabel)
+        {
+            if (includeLabel)
+            {
+                await foreach (var item in GetBinaryDataWithLabelAsync(filePath, dataType, startVectorId, numVectorsToRead))
+                {
+                    string where = EmbeddingWithAmazonLabelDocument.ToWhereStatement(item.Item3);
+
+                    yield return (item.Item1, item.Item2, where);
+                }
+            }
+            else
+            {
+                await foreach (var item in GetBinaryDataAsync(filePath, dataType, startVectorId, numVectorsToRead))
+                {
+                    yield return (item.Item1, item.Item2, string.Empty);
+                }
+            }
+        }
     }
 }
