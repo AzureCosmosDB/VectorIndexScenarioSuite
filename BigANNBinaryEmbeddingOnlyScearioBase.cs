@@ -318,17 +318,20 @@ namespace VectorIndexScenarioSuite
             return Path.Combine(directory, fileName);
         }
 
-        private string GetGroundTruthDataPath()
+        protected virtual string GetGroundTruthDataPath()
         {
-            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
+            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ??
                 throw new ArgumentNullException("AppSettings:dataFilesBasePath");
             string fileName = $"{this.GetGroundTruthFileName}_{this.SliceCount}";
             return Path.Combine(directory, fileName);
         }
 
-        private string GetGroundTruthDataPath(int stepNumber)
+        /* Allow this to be override so we can run multiple streaming scenarios in parallel
+         * while sharing the base files.
+         */
+        protected virtual string GetGroundTruthDataPath(int stepNumber)
         {
-            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
+            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ??
                 throw new ArgumentNullException("AppSettings:dataFilesBasePath");
 
             string fileName = $"step{stepNumber}.gt100";
@@ -371,7 +374,7 @@ namespace VectorIndexScenarioSuite
             if(runIngestion) 
             {
                 int totalVectors = Convert.ToInt32(this.Configurations["AppSettings:scenario:sliceCount"]);
-                await PerformIngestion(IngestionOperationType.Insert, 0 /* startVectorId */, totalVectors);
+                await PerformIngestion(IngestionOperationType.Insert, null /* startTagId */, 0 /* startVectorId */, totalVectors);
             }
 
             bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
@@ -414,6 +417,7 @@ namespace VectorIndexScenarioSuite
             int insertSteps = 0;
             int searchSteps = 0;
             int deleteSteps = 0;
+            int replaceSteps = 0;
             int currentVectorCount = 0;
 
             int totalVectorsInserted = 0;
@@ -433,7 +437,7 @@ namespace VectorIndexScenarioSuite
                         int numVectors = (endVectorId - startVectorId);
                         if (runIngestion && (operationId >= startOperationId))
                         {
-                            await PerformIngestion(IngestionOperationType.Insert, startVectorId, numVectors);
+                            await PerformIngestion(IngestionOperationType.Insert, null /*startTagId */, startVectorId, numVectors);
                         }
 
                         totalVectorsInserted += numVectors;
@@ -491,7 +495,7 @@ namespace VectorIndexScenarioSuite
 
                         if (runIngestion && (operationId >= startOperationId))
                         {
-                            await PerformIngestion(IngestionOperationType.Delete, start, numVectors);
+                            await PerformIngestion(IngestionOperationType.Delete, null /*startTagId */, start, numVectors);
                         }
                         totalVectorsDeleted += numVectors;
 
@@ -501,7 +505,29 @@ namespace VectorIndexScenarioSuite
                     }
                     case "replace":
                     {
-                        throw new NotImplementedException("Replace not implemented yet");
+                        int tagsStart = operation.TagsStart ?? throw new MissingFieldException("TagStart missing for replace.");
+                        int tagsEnd = operation.TagsEnd ?? throw new MissingFieldException("TagEnd missing for replace.");
+
+                        int vectorIdsStart = operation.IdsStart ?? throw new MissingFieldException("IdsStart missing for replace.");
+                        int vectorIdsEnd = operation.IdsEnd ?? throw new MissingFieldException("IdsEnd missing for replace.");
+
+                        int numVectors = (vectorIdsEnd - vectorIdsStart);
+                        int numTags = (tagsEnd - tagsStart);
+
+                        if (numTags != numVectors)
+                        {
+                            throw new ArgumentException("Number of tags and vectors should be equal for replace operation.");
+                        }
+
+                        if (runIngestion && (operationId >= startOperationId))
+                        {
+                            await PerformIngestion(IngestionOperationType.Replace, tagsStart, vectorIdsStart, numVectors);
+                        }
+                        totalVectorsReplaced += numVectors;
+
+                        // Count replace step even if we skipped it as from runbook execution perspective, it was still done before.
+                        replaceSteps++;
+                        break;
                     }
                     default:
                     {
@@ -523,7 +549,8 @@ namespace VectorIndexScenarioSuite
                 $"inserts {totalVectorsInserted}, deletes {totalVectorsDeleted}, replaces {totalVectorsReplaced}," +
                 $"total vectors to be ingested as per appSettings: {totalNetVectorsToIngest}. ");
             int totalSteps = insertSteps + deleteSteps + searchSteps;
-            Console.WriteLine($"Executed {totalSteps} total steps with {insertSteps} insert steps, {deleteSteps} delete steps and {searchSteps} query steps.");
+            Console.WriteLine($"Executed {totalSteps} total steps with {insertSteps} insert steps, {deleteSteps} delete steps, {replaceSteps} replace steps" +
+                $" and {searchSteps} query steps.");
             Console.WriteLine($"Experiment End time in UTC: {DateTime.Now.ToUniversalTime()}");
         }
 
