@@ -5,7 +5,7 @@ namespace VectorIndexScenarioSuite
     internal class EmbeddingOnlyDocument
     {
          [JsonProperty(PropertyName = "id")]
-        public string Id { get; }
+        public string Id { get; set; }
 
          [JsonProperty(PropertyName = "embedding")]
         public float[] Embedding { get; }
