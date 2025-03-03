@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Configuration;
 namespace VectorIndexScenarioSuite
 { 
-    internal class MSMarcoEmbeddingOnlyScenario : BigANNBinaryEmbeddingOnlyScearioBase
+    internal class AmazonScenario : BigANNBinaryEmbeddingOnlyScearioBase
     {
         protected override string BaseDataFile => "base";
         protected override string BinaryFileExt => "fbin";
@@ -12,19 +12,14 @@ namespace VectorIndexScenarioSuite
         protected override string EmbeddingColumn => "embedding";
         protected override string EmbeddingPath => $"/{EmbeddingColumn}";
         protected override VectorDataType EmbeddingDataType => VectorDataType.Float32;
-        protected override DistanceFunction EmbeddingDistanceFunction => DistanceFunction.DotProduct;
-        protected override int EmbeddingDimensions => 768;
+        protected override DistanceFunction EmbeddingDistanceFunction => DistanceFunction.Euclidean;
+        protected override int EmbeddingDimensions => 384;
         protected override int MaxPhysicalPartitionCount => 56;
-        protected override string RunName => "msmarco-embeddingonly-" + guid;
+        protected override string RunName => "amazon-" + guid;
 
-        public MSMarcoEmbeddingOnlyScenario(IConfiguration configurations) : 
+        public AmazonScenario(IConfiguration configurations) : 
             base(configurations, DefaultInitialAndFinalThroughput(configurations).Item1)
         {
-        }
-
-        public override void Setup()
-        {
-            this.ReplaceFinalThroughput(DefaultInitialAndFinalThroughput(this.Configurations).Item2);
         }
 
         public override async Task Run()
@@ -32,9 +27,14 @@ namespace VectorIndexScenarioSuite
             await RunScenario();
         }
 
+        public override void Setup()
+        {
+            this.ReplaceFinalThroughput(DefaultInitialAndFinalThroughput(this.Configurations).Item2);
+        }
+
         private static (int, int) DefaultInitialAndFinalThroughput(IConfiguration configurations)
         {
-            // default throughput for MSMarcoEmbeddingOnlyScenario
+            // default throughput for MSTuringEmbeddingOnlyScenario
             int sliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);
             switch (sliceCount)
             {

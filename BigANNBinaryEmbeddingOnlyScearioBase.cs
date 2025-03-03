@@ -1,25 +1,10 @@
 ﻿using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 
 namespace VectorIndexScenarioSuite
 {
-    internal class EmbeddingOnlyDocument
-    {
-         [JsonProperty(PropertyName = "id")]
-        public string Id { get; }
-
-         [JsonProperty(PropertyName = "embedding")]
-        private float[] Embedding { get; }
-
-        public EmbeddingOnlyDocument(string id, float[] embedding)
-        {
-            this.Id = id;
-            this.Embedding = embedding;
-        }
-    }
 
     abstract class BigANNBinaryEmbeddingOnlyScearioBase : Scenario
     {
@@ -33,7 +18,7 @@ namespace VectorIndexScenarioSuite
         protected abstract string EmbeddingPath { get; }
         protected abstract VectorDataType EmbeddingDataType { get; }
         protected abstract DistanceFunction EmbeddingDistanceFunction { get; }
-        protected abstract ulong EmbeddingDimensions { get; }
+        protected abstract int EmbeddingDimensions { get; }
         protected abstract int MaxPhysicalPartitionCount { get; }
         protected abstract string RunName { get; }
         protected static Guid guid = Guid.NewGuid();
@@ -97,6 +82,9 @@ namespace VectorIndexScenarioSuite
                         {
                             Path = this.EmbeddingPath,
                             Type = VectorIndexType.DiskANN,
+                            // TODO: not supported configuration, need to update the SDK to support it
+                            // VectorIndexShardKey = ["/brand"],
+                            // IndexingSearchListSize = 100,
                         }
                     }
                 }
@@ -122,7 +110,7 @@ namespace VectorIndexScenarioSuite
             var tasks = new List<Task>(numIngestionBatchCount);
             for (int rangeIndex = 0; rangeIndex < numIngestionBatchCount; rangeIndex++)
             {
-                int startVectorIdForRange = startVectorId + (rangeIndex * numVectorsPerRange) ;
+                int startVectorIdForRange = startVectorId + (rangeIndex * numVectorsPerRange);
                 Console.WriteLine(
                     $"Starting ingestion for operation {ingestionOperationType.ToString()}, range: {rangeIndex} with start vectorId: [{startVectorIdForRange}, " +
                     $"{startVectorIdForRange + numVectorsPerRange})");
@@ -130,6 +118,14 @@ namespace VectorIndexScenarioSuite
             }
 
             await Task.WhenAll(tasks);
+        }
+
+        // check if scenario is amzaon 
+        protected bool IsAmazonScenario()
+        {
+            string scenarioName = this.Configurations["AppSettings:scenario:name"] ??
+                throw new ArgumentNullException("AppSettings:scenario:name");
+            return scenarioName.Equals("amazon", StringComparison.OrdinalIgnoreCase);
         }
 
         protected async Task BulkIngestDataForRange(IngestionOperationType ingestionOperationType, int? startTagId, int startVectorId, int numVectorsToIngest)
@@ -141,8 +137,9 @@ namespace VectorIndexScenarioSuite
             string logFilePath = Path.Combine(errorLogBasePath, $"{this.RunName}-ingest.log");
 
             int totalVectorsIngested = 0;
-            await foreach ((int vectorId, float[] vector) in BigANNBinaryFormat.GetBinaryDataAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest))
+            await foreach (var document in BigANNBinaryFormat.GetDocumentAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest, IsAmazonScenario()))
             {
+                int vectorId = Convert.ToInt32(document.Id);
                 int cosmosDbDocAndPkIdForOperation = vectorId;
 
                 // For Replace scenario, the vectorId here is for the new image but we need original id to replace which is based on the tag.
@@ -152,7 +149,9 @@ namespace VectorIndexScenarioSuite
                     cosmosDbDocAndPkIdForOperation = startTagIdValue + (vectorId - startVectorId);
                 }
 
-                var createTask = CreateIngestionOperationTask(ingestionOperationType, cosmosDbDocAndPkIdForOperation, vector).ContinueWith(async itemResponse =>
+                document.Id = cosmosDbDocAndPkIdForOperation.ToString();
+
+                var createTask = CreateIngestionOperationTask(ingestionOperationType,document).ContinueWith(async itemResponse =>
                 {
                     if (!itemResponse.IsCompletedSuccessfully)
                     {
@@ -191,19 +190,19 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        private Task<ItemResponse<EmbeddingOnlyDocument>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, int cosmosDbDocAndPkIdForOperation, float[] vector)
+        private Task<ItemResponse<EmbeddingOnlyDocument>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, EmbeddingOnlyDocument document)
         {
             switch (ingestionOperationType)
             {
                 case IngestionOperationType.Insert:
                     return this.CosmosContainerForIngestion.CreateItemAsync<EmbeddingOnlyDocument>(
-                        new EmbeddingOnlyDocument(cosmosDbDocAndPkIdForOperation.ToString(), vector), new PartitionKey(cosmosDbDocAndPkIdForOperation.ToString()));
+                        document, new PartitionKey(document.Id));
                 case IngestionOperationType.Delete:
                     return this.CosmosContainerForIngestion.DeleteItemAsync<EmbeddingOnlyDocument>(
-                        cosmosDbDocAndPkIdForOperation.ToString(), new PartitionKey(cosmosDbDocAndPkIdForOperation.ToString()));
+                        document.Id, new PartitionKey(document.Id));
                 case IngestionOperationType.Replace:
                     return this.CosmosContainerForIngestion.ReplaceItemAsync<EmbeddingOnlyDocument>(
-                        new EmbeddingOnlyDocument(cosmosDbDocAndPkIdForOperation.ToString(), vector), cosmosDbDocAndPkIdForOperation.ToString(), new PartitionKey(cosmosDbDocAndPkIdForOperation.ToString()));
+                        document, document.Id, new PartitionKey(document.Id));
                     throw new NotImplementedException("Replace not implemented yet");
                 default:
                     throw new ArgumentException("Invalid IngestionOperationType");
@@ -215,10 +214,11 @@ namespace VectorIndexScenarioSuite
             // Issue parallel queries to all partitions, capping this to MAX_PHYSICAL_PARTITION_COUNT but can be override through config.
             int overrideMaxConcurrancy = Convert.ToInt32(this.Configurations["AppSettings:scenario:MaxPhysicalPartitionCount"]);
             int maxConcurrancy = overrideMaxConcurrancy == 0 ? this.MaxPhysicalPartitionCount : overrideMaxConcurrancy;
-            await foreach ((int vectorId, float[] vector) in
-                BigANNBinaryFormat.GetBinaryDataAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries))
+            await foreach ((int vectorId, float[] vector, string whereClause) in
+                BigANNBinaryFormat.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries, IsAmazonScenario()))
             {
-                var queryDefinition = ConstructQueryDefinition(KVal, vector);
+
+                var queryDefinition = ConstructQueryDefinition(KVal, vector, whereClause);
 
                 bool retryQueryOnFailureForLatencyMeasurement;
                 do
@@ -294,7 +294,7 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        private QueryDefinition ConstructQueryDefinition(int K, float[] queryVector)
+        private QueryDefinition ConstructQueryDefinition(int K, float[] queryVector, string where)
         {
             int searchListSizeMultiplier = Convert.ToInt32(this.Configurations["AppSettings:scenario:searchListSizeMultiplier"]);
 
@@ -302,9 +302,10 @@ namespace VectorIndexScenarioSuite
             string obj_expr = searchListSizeMultiplier == 0 ? "{}" : $"{{ 'searchListSizeMultiplier': {searchListSizeMultiplier} }}";
 
             string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding) AS similarityScore " +
-                $"FROM c ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false, {obj_expr})";
-;
+                $"FROM c {where} ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false, {obj_expr})";
+            
             return new QueryDefinition(queryText).WithParameter("@vectorEmbedding", queryVector);
+
         }
 
         private string GetBaseDataPath()
@@ -319,7 +320,7 @@ namespace VectorIndexScenarioSuite
 
         protected virtual string GetGroundTruthDataPath()
         {
-            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
+            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ??
                 throw new ArgumentNullException("AppSettings:dataFilesBasePath");
             string fileName = $"{this.GetGroundTruthFileName}_{this.SliceCount}";
             return Path.Combine(directory, fileName);
@@ -330,7 +331,7 @@ namespace VectorIndexScenarioSuite
          */
         protected virtual string GetGroundTruthDataPath(int stepNumber)
         {
-            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
+            string directory = this.Configurations["AppSettings:dataFilesBasePath"] ??
                 throw new ArgumentNullException("AppSettings:dataFilesBasePath");
 
             string fileName = $"step{stepNumber}.gt100";
@@ -494,7 +495,7 @@ namespace VectorIndexScenarioSuite
 
                         if (runIngestion && (operationId >= startOperationId))
                         {
-                            await PerformIngestion(IngestionOperationType.Delete, null /* startTagId */, start, numVectors);
+                            await PerformIngestion(IngestionOperationType.Delete, null /*startTagId */, start, numVectors);
                         }
                         totalVectorsDeleted += numVectors;
 
@@ -509,7 +510,7 @@ namespace VectorIndexScenarioSuite
 
                         int vectorIdsStart = operation.IdsStart ?? throw new MissingFieldException("IdsStart missing for replace.");
                         int vectorIdsEnd = operation.IdsEnd ?? throw new MissingFieldException("IdsEnd missing for replace.");
-                         
+
                         int numVectors = (vectorIdsEnd - vectorIdsStart);
                         int numTags = (tagsEnd - tagsStart);
 
