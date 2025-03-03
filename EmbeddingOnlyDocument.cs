@@ -8,7 +8,7 @@ namespace VectorIndexScenarioSuite
         public string Id { get; }
 
          [JsonProperty(PropertyName = "embedding")]
-        private float[] Embedding { get; }
+        public float[] Embedding { get; }
 
         public EmbeddingOnlyDocument(string id, float[] embedding)
         {

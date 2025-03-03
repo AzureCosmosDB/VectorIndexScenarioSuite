@@ -98,23 +98,23 @@ namespace VectorIndexScenarioSuite
             return properties;
         }
 
-        protected async Task PerformIngestion(IngestionOperationType ingestionOperationType, int startVectorId, int totalVectors)
+        protected async Task PerformIngestion(IngestionOperationType ingestionOperationType, int? startTagId, int startVectorId, int totalVectors)
         {
-            int numBulkIngestionBatchCount = Convert.ToInt32(this.Configurations["AppSettings:scenario:numBulkIngestionBatchCount"]);
-            if (totalVectors % numBulkIngestionBatchCount != 0)
+            int numIngestionBatchCount = Convert.ToInt32(this.Configurations["AppSettings:scenario:numIngestionBatchCount"]);
+            if (totalVectors % numIngestionBatchCount != 0)
             {
-                throw new ArgumentException("Total vectors should be evenly divisible by numBulkIngestionBatchCount");
+                throw new ArgumentException("Total vectors should be evenly divisible by numIngestionBatchCount");
             }
-            int numVectorsPerRange = totalVectors / numBulkIngestionBatchCount;
+            int numVectorsPerRange = totalVectors / numIngestionBatchCount;
 
-            var tasks = new List<Task>(numBulkIngestionBatchCount);
-            for (int rangeIndex = 0; rangeIndex < numBulkIngestionBatchCount; rangeIndex++)
+            var tasks = new List<Task>(numIngestionBatchCount);
+            for (int rangeIndex = 0; rangeIndex < numIngestionBatchCount; rangeIndex++)
             {
-                int startVectorIdForRange = startVectorId + (rangeIndex * numVectorsPerRange) ;
+                int startVectorIdForRange = startVectorId + (rangeIndex * numVectorsPerRange);
                 Console.WriteLine(
                     $"Starting ingestion for operation {ingestionOperationType.ToString()}, range: {rangeIndex} with start vectorId: [{startVectorIdForRange}, " +
                     $"{startVectorIdForRange + numVectorsPerRange})");
-                tasks.Add(BulkIngestDataForRange(ingestionOperationType, startVectorIdForRange, numVectorsPerRange));
+                tasks.Add(BulkIngestDataForRange(ingestionOperationType, startTagId, startVectorIdForRange, numVectorsPerRange));
             }
 
             await Task.WhenAll(tasks);
@@ -128,7 +128,7 @@ namespace VectorIndexScenarioSuite
             return scenarioName.Equals("amazon", StringComparison.OrdinalIgnoreCase);
         }
 
-        protected async Task BulkIngestDataForRange(IngestionOperationType ingestionOperationType, int startVectorId, int numVectorsToIngest)
+        protected async Task BulkIngestDataForRange(IngestionOperationType ingestionOperationType, int? startTagId, int startVectorId, int numVectorsToIngest)
         {
             // The batches that the SDK creates to optimize throughput have a current maximum of 2Mb or 100 operations per batch, 
             List<Task> ingestTasks = new List<Task>(COSMOSDB_MAX_BATCH_SIZE);
@@ -139,7 +139,18 @@ namespace VectorIndexScenarioSuite
             int totalVectorsIngested = 0;
             await foreach (var document in BigANNBinaryFormat.GetDocumentAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest, IsAmazonScenario()))
             {
-                string vectorId = document.Id;
+                int vectorId = Convert.ToInt32(document.Id);
+                int cosmosDbDocAndPkIdForOperation = vectorId;
+
+                // For Replace scenario, the vectorId here is for the new image but we need original id to replace which is based on the tag.
+                if (ingestionOperationType == IngestionOperationType.Replace)
+                {
+                    int startTagIdValue = startTagId.HasValue ? startTagId.Value : throw new ArgumentNullException("StartId is null");
+                    cosmosDbDocAndPkIdForOperation = startTagIdValue + (vectorId - startVectorId);
+                }
+
+                document.Id = cosmosDbDocAndPkIdForOperation.ToString();
+
                 var createTask = CreateIngestionOperationTask(ingestionOperationType,document).ContinueWith(async itemResponse =>
                 {
                     if (!itemResponse.IsCompletedSuccessfully)
@@ -181,16 +192,17 @@ namespace VectorIndexScenarioSuite
 
         private Task<ItemResponse<EmbeddingOnlyDocument>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, EmbeddingOnlyDocument document)
         {
-             switch (ingestionOperationType)
+            switch (ingestionOperationType)
             {
                 case IngestionOperationType.Insert:
-                        return this.CosmosContainerForIngestion.CreateItemAsync<EmbeddingOnlyDocument>(
+                    return this.CosmosContainerForIngestion.CreateItemAsync<EmbeddingOnlyDocument>(
                         document, new PartitionKey(document.Id));
                 case IngestionOperationType.Delete:
                     return this.CosmosContainerForIngestion.DeleteItemAsync<EmbeddingOnlyDocument>(
                         document.Id, new PartitionKey(document.Id));
                 case IngestionOperationType.Replace:
-                    // This needs APIs to be further enhanced before we support it.
+                    return this.CosmosContainerForIngestion.ReplaceItemAsync<EmbeddingOnlyDocument>(
+                        new EmbeddingOnlyDocument(document.Id, document.Embedding), document.Id, new PartitionKey(document.Id));
                     throw new NotImplementedException("Replace not implemented yet");
                 default:
                     throw new ArgumentException("Invalid IngestionOperationType");
