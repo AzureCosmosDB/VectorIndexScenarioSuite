@@ -5,8 +5,6 @@ VisualStudioVersion = 17.10.35027.167
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VectorIndexScenarioSuite", "VectorIndexScenarioSuite.csproj", "{888393AA-313B-4C88-8AEF-50DEF6B01C96}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VectorIndexScenarioSuite.Test", "VectorIndexScenarioSuite.Test\VectorIndexScenarioSuite.Test.csproj", "{DC00F48C-B887-480D-9397-7D03285D549E}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,12 +18,6 @@ Global
 		{888393AA-313B-4C88-8AEF-50DEF6B01C96}.partitioned|Any CPU.Build.0 = partitioned|Any CPU
 		{888393AA-313B-4C88-8AEF-50DEF6B01C96}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{888393AA-313B-4C88-8AEF-50DEF6B01C96}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DC00F48C-B887-480D-9397-7D03285D549E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DC00F48C-B887-480D-9397-7D03285D549E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DC00F48C-B887-480D-9397-7D03285D549E}.partitioned|Any CPU.ActiveCfg = Release|Any CPU
-		{DC00F48C-B887-480D-9397-7D03285D549E}.partitioned|Any CPU.Build.0 = Release|Any CPU
-		{DC00F48C-B887-480D-9397-7D03285D549E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DC00F48C-B887-480D-9397-7D03285D549E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -120,6 +120,14 @@ namespace VectorIndexScenarioSuite
             await Task.WhenAll(tasks);
         }
 
+        // check if scenario is amzaon 
+        protected bool IsAmazonScenario()
+        {
+            string scenarioName = this.Configurations["AppSettings:scenario:name"] ??
+                throw new ArgumentNullException("AppSettings:scenario:name");
+            return scenarioName.Equals("amazon", StringComparison.OrdinalIgnoreCase);
+        }
+
         protected async Task BulkIngestDataForRange(IngestionOperationType ingestionOperationType, int startVectorId, int numVectorsToIngest)
         {
             // The batches that the SDK creates to optimize throughput have a current maximum of 2Mb or 100 operations per batch, 
@@ -129,7 +137,7 @@ namespace VectorIndexScenarioSuite
             string logFilePath = Path.Combine(errorLogBasePath, $"{this.RunName}-ingest.log");
 
             int totalVectorsIngested = 0;
-            await foreach (var document in BigANNBinaryFormat.GetDocumentAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest))
+            await foreach (var document in BigANNBinaryFormat.GetDocumentAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest, IsAmazonScenario()))
             {
                 string vectorId = document.Id;
                 var createTask = CreateIngestionOperationTask(ingestionOperationType,document).ContinueWith(async itemResponse =>
@@ -171,15 +179,15 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        private Task<ItemResponse<EmbeddingWithAmazonLabelDocument>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, EmbeddingWithAmazonLabelDocument document)
+        private Task<ItemResponse<EmbeddingOnlyDocument>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, EmbeddingOnlyDocument document)
         {
              switch (ingestionOperationType)
             {
                 case IngestionOperationType.Insert:
-                        return this.CosmosContainerWithBulkClient.CreateItemAsync<EmbeddingWithAmazonLabelDocument>(
+                        return this.CosmosContainerForIngestion.CreateItemAsync<EmbeddingOnlyDocument>(
                         document, new PartitionKey(document.Id));
                 case IngestionOperationType.Delete:
-                    return this.CosmosContainerWithBulkClient.DeleteItemAsync<EmbeddingWithAmazonLabelDocument>(
+                    return this.CosmosContainerForIngestion.DeleteItemAsync<EmbeddingOnlyDocument>(
                         document.Id, new PartitionKey(document.Id));
                 case IngestionOperationType.Replace:
                     // This needs APIs to be further enhanced before we support it.
@@ -195,7 +203,7 @@ namespace VectorIndexScenarioSuite
             int overrideMaxConcurrancy = Convert.ToInt32(this.Configurations["AppSettings:scenario:MaxPhysicalPartitionCount"]);
             int maxConcurrancy = overrideMaxConcurrancy == 0 ? this.MaxPhysicalPartitionCount : overrideMaxConcurrancy;
             await foreach ((int vectorId, float[] vector, string whereClause) in
-                BigANNBinaryFormat.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries, IsA))
+                BigANNBinaryFormat.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries, IsAmazonScenario()))
             {
 
                 var queryDefinition = ConstructQueryDefinition(KVal, vector, whereClause);
