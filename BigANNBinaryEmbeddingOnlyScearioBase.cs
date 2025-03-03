@@ -202,7 +202,7 @@ namespace VectorIndexScenarioSuite
                         document.Id, new PartitionKey(document.Id));
                 case IngestionOperationType.Replace:
                     return this.CosmosContainerForIngestion.ReplaceItemAsync<EmbeddingOnlyDocument>(
-                        new EmbeddingOnlyDocument(document.Id, document.Embedding), document.Id, new PartitionKey(document.Id));
+                        document, document.Id, new PartitionKey(document.Id));
                     throw new NotImplementedException("Replace not implemented yet");
                 default:
                     throw new ArgumentException("Invalid IngestionOperationType");
@@ -296,10 +296,16 @@ namespace VectorIndexScenarioSuite
 
         private QueryDefinition ConstructQueryDefinition(int K, float[] queryVector, string where)
         {
+            int searchListSizeMultiplier = Convert.ToInt32(this.Configurations["AppSettings:scenario:searchListSizeMultiplier"]);
+
+            // empty json object for using default value if multiplier is 0
+            string obj_expr = searchListSizeMultiplier == 0 ? "{}" : $"{{ 'searchListSizeMultiplier': {searchListSizeMultiplier} }}";
+
             string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding) AS similarityScore " +
-                $"FROM c {where} ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false)";
-;
+                $"FROM c {where} ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false, {obj_expr})";
+            
             return new QueryDefinition(queryText).WithParameter("@vectorEmbedding", queryVector);
+
         }
 
         private string GetBaseDataPath()
