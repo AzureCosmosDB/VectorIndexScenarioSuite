@@ -129,15 +129,9 @@ namespace VectorIndexScenarioSuite
             string logFilePath = Path.Combine(errorLogBasePath, $"{this.RunName}-ingest.log");
 
             int totalVectorsIngested = 0;
-            await foreach ((int vectorId, float[] vector, string label ) in BigANNBinaryFormat.GetBinaryDataWithLabelAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest))
+            await foreach (var document in BigANNBinaryFormat.GetDocumentAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest))
             {
-                var labelJson = LabelParser.ParseLineToJson(label);
-                string brand = labelJson["brand"]?.ToString() ?? string.Empty;
-                string rating = labelJson["rating"]?.ToString() ?? string.Empty;
-                var category = ((List<string>?)labelJson["category"])?.ToArray() ?? Array.Empty<string>();
-
-                var document = new EmbeddingWithAmazonLabelDocument(vectorId.ToString(), vector,brand, rating,category);
-
+                string vectorId = document.Id;
                 var createTask = CreateIngestionOperationTask(ingestionOperationType,document).ContinueWith(async itemResponse =>
                 {
                     if (!itemResponse.IsCompletedSuccessfully)
