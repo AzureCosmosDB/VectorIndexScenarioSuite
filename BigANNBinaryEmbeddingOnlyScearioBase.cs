@@ -215,6 +215,8 @@ namespace VectorIndexScenarioSuite
         {
             bool computeLatencyAndRUStats = Convert.ToBoolean(this.Configurations["AppSettings:scenario:computeLatencyAndRUStats"]);
             double highlatencyRequestThreshold = Convert.ToDouble(this.Configurations["AppSettings:scenario:highlatencyRequestThreshold"]);
+            string errorLogBasePath = this.Configurations["AppSettings:errorLogBasePath"] ??
+                throw new ArgumentNullException("AppSettings:errorLogBasePath");
 
             // Issue parallel queries to all partitions, capping this to MAX_PHYSICAL_PARTITION_COUNT but can be override through config.
             int overrideMaxConcurrancy = Convert.ToInt32(this.Configurations["AppSettings:scenario:MaxPhysicalPartitionCount"]);
@@ -252,15 +254,18 @@ namespace VectorIndexScenarioSuite
                                 // The second iteration does not have meaningful RU and Latency numbers.
                                 if (queryResponse.RequestCharge > 0)
                                 {
+                                    double clientElapsedTimeInMs = queryResponse.Diagnostics.GetClientElapsedTime().TotalMilliseconds;
                                     this.queryMetrics[KVal].AddRequestUnitMeasurement(
                                         queryResponse.RequestCharge);
-                                    this.queryMetrics[KVal].AddClientLatencyMeasurement(
-                                        queryResponse.Diagnostics.GetClientElapsedTime().TotalMilliseconds);
+                                    this.queryMetrics[KVal].AddClientLatencyMeasurement(clientElapsedTimeInMs
+                                        );
 
-                                    if (queryResponse.Diagnostics.GetClientElapsedTime().TotalMicroseconds > highlatencyRequestThreshold)
+                                    if (clientElapsedTimeInMs > highlatencyRequestThreshold)
                                     {
+                                        Console.WriteLine($"High latency request for vectorId: {vectorId} with elapsed time: " +
+                                            $"{clientElapsedTimeInMs} ms. Threshold: {highlatencyRequestThreshold}");
                                         // Log the response.Diagnostics.ToString() and add any additional info necessary to correlate to other logs 
-                                        using (StreamWriter writer = new StreamWriter($"client_diagnostics_vector_{vectorId}.json"))
+                                        using (StreamWriter writer = new StreamWriter($"{errorLogBasePath}\\client_diagnostics_vector_{vectorId}.json"))
                                         {
                                             await writer.WriteLineAsync($"{queryResponse.Diagnostics.ToString()}");
                                         }
@@ -397,7 +402,7 @@ namespace VectorIndexScenarioSuite
                 {
                     int numWarmupQueries = Convert.ToInt32(this.Configurations["AppSettings:scenario:warmup:numWarmupQueries"]);
                     Console.WriteLine($"Performing {numWarmupQueries} queries for Warmup.");
-                    await PerformQuery(true /* isWarmup */, numWarmupQueries, 10 /*KVal*/, GetBaseDataPath());
+                    await PerformQuery(true /* isWarmup */, numWarmupQueries, 10 /*KVal*/, GetQueryDataPath());
                 }
 
                 int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
