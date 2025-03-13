@@ -260,10 +260,10 @@ namespace VectorIndexScenarioSuite
                                     this.queryMetrics[KVal].AddClientLatencyMeasurement(clientElapsedTimeInMs
                                         );
 
-                                    if (clientElapsedTimeInMs > highlatencyRequestThreshold)
+                                    if (highlatencyRequestThreshold> 0 && clientElapsedTimeInMs > highlatencyRequestThreshold)
                                     {
-                                        Console.WriteLine($"High latency request for vectorId: {vectorId} with elapsed time: " +
-                                            $"{clientElapsedTimeInMs} ms. Threshold: {highlatencyRequestThreshold}");
+                                        //Console.WriteLine($"High latency request for vectorId: {vectorId} with elapsed time: " +
+                                         //   $"{clientElapsedTimeInMs} ms. Threshold: {highlatencyRequestThreshold}");
                                         // Log the response.Diagnostics.ToString() and add any additional info necessary to correlate to other logs 
                                         using (StreamWriter writer = new StreamWriter($"{errorLogBasePath}\\client_diagnostics_vector_{vectorId}.json"))
                                         {
