@@ -84,10 +84,18 @@ namespace VectorIndexScenarioSuite
             return queryClause;
         }
 
-        public static string ToWhereStatement(string queryLabel)
+        public static string TryToWhereStatement(string queryLabel)
         {
             var queryClause = FromQuery(queryLabel);
-            return "where " + ToWhereStatement(queryClause);
+            var whereClause = ToWhereStatement(queryClause);
+            if (whereClause == string.Empty)
+            { 
+                return string.Empty; 
+            }
+            else
+            {
+                return "where " + whereClause;
+            }
         }
 
         // Function to create a WHERE statement from query_clause

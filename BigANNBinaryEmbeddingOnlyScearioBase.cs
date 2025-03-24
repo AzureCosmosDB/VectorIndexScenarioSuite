@@ -300,7 +300,6 @@ namespace VectorIndexScenarioSuite
 
             // empty json object for using default value if multiplier is 0
             string obj_expr = searchListSizeMultiplier == 0 ? "{}" : $"{{ 'searchListSizeMultiplier': {searchListSizeMultiplier} }}";
-
             string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding) AS similarityScore " +
                 $"FROM c {where} ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false, {obj_expr})";
             

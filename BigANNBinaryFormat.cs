@@ -227,7 +227,7 @@ namespace VectorIndexScenarioSuite
             {
                 await foreach (var item in GetBinaryDataWithLabelAsync(filePath, dataType, startVectorId, numVectorsToRead))
                 {
-                    string where = EmbeddingWithAmazonLabelDocument.ToWhereStatement(item.Item3);
+                    string where = EmbeddingWithAmazonLabelDocument.TryToWhereStatement(item.Item3);
 
                     yield return (item.Item1, item.Item2, where);
                 }
