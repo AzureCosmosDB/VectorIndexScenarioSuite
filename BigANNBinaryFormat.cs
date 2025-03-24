@@ -191,7 +191,7 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        public static async IAsyncEnumerable<EmbeddingOnlyDocument> GetDocumentAsync(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead, bool includeLabel)
+        public static async IAsyncEnumerable<EmbeddingDocumentBase> GetDocumentAsync(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead, bool includeLabel)
         {
             if (includeLabel)
             {
@@ -204,7 +204,7 @@ namespace VectorIndexScenarioSuite
             {
                 await foreach (var item in GetBinaryDataAsync(filePath, dataType, startVectorId, numVectorsToRead))
                 {
-                    yield return new EmbeddingOnlyDocument(item.Item1.ToString(), item.Item2);
+                    yield return new EmbeddingDocumentBase(item.Item1.ToString(), item.Item2);
                 }
             }
         }

@@ -2,7 +2,7 @@
 
 namespace VectorIndexScenarioSuite
 {
-    internal class EmbeddingWithAmazonLabelDocument : EmbeddingOnlyDocument
+    internal class EmbeddingWithAmazonLabelDocument : EmbeddingDocumentBase
     {
         [JsonProperty(PropertyName = "brand")]
         private string Brand { get; }

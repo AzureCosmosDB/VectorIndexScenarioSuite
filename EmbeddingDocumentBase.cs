@@ -2,7 +2,7 @@
 
 namespace VectorIndexScenarioSuite
 {
-    internal class EmbeddingOnlyDocument
+    internal class EmbeddingDocumentBase
     {
          [JsonProperty(PropertyName = "id")]
         public string Id { get; set; }
@@ -10,7 +10,7 @@ namespace VectorIndexScenarioSuite
          [JsonProperty(PropertyName = "embedding")]
         public float[] Embedding { get; }
 
-        public EmbeddingOnlyDocument(string id, float[] embedding)
+        public EmbeddingDocumentBase(string id, float[] embedding)
         {
             this.Id = id;
             this.Embedding = embedding;

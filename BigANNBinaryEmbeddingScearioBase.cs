@@ -6,7 +6,7 @@ using System.Collections.ObjectModel;
 namespace VectorIndexScenarioSuite
 {
 
-    abstract class BigANNBinaryEmbeddingOnlyScearioBase : Scenario
+    abstract class BigANNBinaryEmbeddingScearioBase : Scenario
     {
         protected abstract string BaseDataFile { get; }
         protected int SliceCount { get; set; }
@@ -34,7 +34,7 @@ namespace VectorIndexScenarioSuite
 
         protected ScenarioMetrics ingestionMetrics;
 
-        public BigANNBinaryEmbeddingOnlyScearioBase(IConfiguration configurations, int throughPut) : 
+        public BigANNBinaryEmbeddingScearioBase(IConfiguration configurations, int throughPut) : 
             base(configurations, throughPut)
         {
             this.SliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);
@@ -190,18 +190,18 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        private Task<ItemResponse<EmbeddingOnlyDocument>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, EmbeddingOnlyDocument document)
+        private Task<ItemResponse<EmbeddingDocumentBase>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, EmbeddingDocumentBase document)
         {
             switch (ingestionOperationType)
             {
                 case IngestionOperationType.Insert:
-                    return this.CosmosContainerForIngestion.CreateItemAsync<EmbeddingOnlyDocument>(
+                    return this.CosmosContainerForIngestion.CreateItemAsync<EmbeddingDocumentBase>(
                         document, new PartitionKey(document.Id));
                 case IngestionOperationType.Delete:
-                    return this.CosmosContainerForIngestion.DeleteItemAsync<EmbeddingOnlyDocument>(
+                    return this.CosmosContainerForIngestion.DeleteItemAsync<EmbeddingDocumentBase>(
                         document.Id, new PartitionKey(document.Id));
                 case IngestionOperationType.Replace:
-                    return this.CosmosContainerForIngestion.ReplaceItemAsync<EmbeddingOnlyDocument>(
+                    return this.CosmosContainerForIngestion.ReplaceItemAsync<EmbeddingDocumentBase>(
                         document, document.Id, new PartitionKey(document.Id));
                     throw new NotImplementedException("Replace not implemented yet");
                 default:
