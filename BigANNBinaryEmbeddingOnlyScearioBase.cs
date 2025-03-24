@@ -120,8 +120,8 @@ namespace VectorIndexScenarioSuite
             await Task.WhenAll(tasks);
         }
 
-        // check if scenario is amzaon 
-        protected bool IsAmazonScenario()
+        // check if scenario needs to read label files 
+        protected bool IsWithLabelScenario()
         {
             string scenarioName = this.Configurations["AppSettings:scenario:name"] ??
                 throw new ArgumentNullException("AppSettings:scenario:name");
@@ -137,7 +137,7 @@ namespace VectorIndexScenarioSuite
             string logFilePath = Path.Combine(errorLogBasePath, $"{this.RunName}-ingest.log");
 
             int totalVectorsIngested = 0;
-            await foreach (var document in BigANNBinaryFormat.GetDocumentAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest, IsAmazonScenario()))
+            await foreach (var document in BigANNBinaryFormat.GetDocumentAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest, IsWithLabelScenario()))
             {
                 int vectorId = Convert.ToInt32(document.Id);
                 int cosmosDbDocAndPkIdForOperation = vectorId;
@@ -215,7 +215,7 @@ namespace VectorIndexScenarioSuite
             int overrideMaxConcurrancy = Convert.ToInt32(this.Configurations["AppSettings:scenario:MaxPhysicalPartitionCount"]);
             int maxConcurrancy = overrideMaxConcurrancy == 0 ? this.MaxPhysicalPartitionCount : overrideMaxConcurrancy;
             await foreach ((int vectorId, float[] vector, string whereClause) in
-                BigANNBinaryFormat.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries, IsAmazonScenario()))
+                BigANNBinaryFormat.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries, IsWithLabelScenario()))
             {
 
                 var queryDefinition = ConstructQueryDefinition(KVal, vector, whereClause);
