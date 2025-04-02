@@ -64,8 +64,8 @@ namespace VectorIndexScenarioSuite
 
             switch (scenarios)
             {
-                case Scenarios.Amazon:
-                    return new AmazonScenario(configurations);
+                case Scenarios.AmazonAutomotive:
+                    return new AmazonAutomotiveScenario(configurations);
                 case Scenarios.MSMarcoEmbeddingOnly:
                     return new MSMarcoEmbeddingOnlyScenario(configurations);
                 case Scenarios.MSTuringEmbeddingOnly:

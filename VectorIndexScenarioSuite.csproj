@@ -6,7 +6,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 	<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-	<Configurations>Debug;Release;amazon;partitioned</Configurations>
   </PropertyGroup>
 
   <ItemGroup>

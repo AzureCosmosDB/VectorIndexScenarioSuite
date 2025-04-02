@@ -1,6 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Reflection.Emit;
-using System.Runtime.CompilerServices;
 
 namespace VectorIndexScenarioSuite
 {
@@ -117,7 +115,7 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        public static async IAsyncEnumerable<(int, float[])> GetBinaryDataAsync(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead)
+        internal static async IAsyncEnumerable<(int, float[])> GetBinaryDataAsync(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead)
         {
             // Read the header to get the number of vectors and dimensions
             (int totalNumberOfVectors, int dimensions, int headerSize) = GetBinaryDataHeader(filePath);
@@ -148,7 +146,7 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        public static async IAsyncEnumerable<(int, float[], string)> GetBinaryDataWithLabelAsync(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead)
+        internal static async IAsyncEnumerable<(int, float[], string)> GetBinaryDataWithLabelAsync(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead)
         {
             // Read the header to get the number of vectors and dimensions
             (int totalNumberOfVectors, int dimensions, int headerSize) = GetBinaryDataHeader(filePath);
@@ -182,61 +180,8 @@ namespace VectorIndexScenarioSuite
                         vector[d] = BitConverter.ToSingle(buffer, 0);
                     }
                     var line = await labelreader.ReadLineAsync();
-                    if (line == null) {
-                        Console.WriteLine("Empty lable line for {0}", currentId);
-                    }
 
                     yield return (currentId, vector, line);
-                }
-            }
-        }
-
-        public static async IAsyncEnumerable<EmbeddingDocumentBase> GetDocumentAsync(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead, bool includeLabel)
-        {
-            if (includeLabel)
-            {
-                await foreach (var item in GetBinaryDataWithLabelAsync(filePath, dataType, startVectorId, numVectorsToRead))
-                {
-                    yield return new EmbeddingWithAmazonLabelDocument(item.Item1.ToString(), item.Item2, item.Item3);
-                }
-            }
-            else
-            {
-                await foreach (var item in GetBinaryDataAsync(filePath, dataType, startVectorId, numVectorsToRead))
-                {
-                    yield return new EmbeddingDocumentBase(item.Item1.ToString(), item.Item2);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Get query data from the binary file.
-        /// </summary>
-        /// <param name="filePath">data file</param>
-        /// <param name="dataType">data type</param>
-        /// <param name="startVectorId">start vector id </param>
-        /// <param name="numVectorsToRead">number to read</param>
-        /// <param name="includeLabel">read label data</param>
-        /// <returns>
-        ///  vector id, vector data, label(to where statement)
-        /// 
-        /// </returns>
-        public static async IAsyncEnumerable<(int, float[], string)> GetQueryAsync(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead, bool includeLabel)
-        {
-            if (includeLabel)
-            {
-                await foreach (var item in GetBinaryDataWithLabelAsync(filePath, dataType, startVectorId, numVectorsToRead))
-                {
-                    string where = EmbeddingWithAmazonLabelDocument.TryToWhereStatement(item.Item3);
-
-                    yield return (item.Item1, item.Item2, where);
-                }
-            }
-            else
-            {
-                await foreach (var item in GetBinaryDataAsync(filePath, dataType, startVectorId, numVectorsToRead))
-                {
-                    yield return (item.Item1, item.Item2, string.Empty);
                 }
             }
         }

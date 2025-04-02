@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Configuration;
 namespace VectorIndexScenarioSuite
 { 
-    internal class AmazonScenario : BigANNBinaryEmbeddingScearioBase
+    internal class AmazonAutomotiveScenario : BigANNBinaryEmbeddingScearioBase
     {
         protected override string BaseDataFile => "base";
         protected override string BinaryFileExt => "fbin";
@@ -17,7 +17,7 @@ namespace VectorIndexScenarioSuite
         protected override int MaxPhysicalPartitionCount => 56;
         protected override string RunName => "amazon-" + guid;
 
-        public AmazonScenario(IConfiguration configurations) : 
+        public AmazonAutomotiveScenario(IConfiguration configurations) : 
             base(configurations, DefaultInitialAndFinalThroughput(configurations).Item1)
         {
         }

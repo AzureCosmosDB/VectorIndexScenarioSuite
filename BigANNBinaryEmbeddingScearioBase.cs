@@ -137,19 +137,16 @@ namespace VectorIndexScenarioSuite
             string logFilePath = Path.Combine(errorLogBasePath, $"{this.RunName}-ingest.log");
 
             int totalVectorsIngested = 0;
-            await foreach (var document in BigANNBinaryFormat.GetDocumentAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest, IsWithLabelScenario()))
+            await foreach (var document in JsonDocumentFactory.GetDocumentAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest, IsWithLabelScenario()))
             {
                 int vectorId = Convert.ToInt32(document.Id);
-                int cosmosDbDocAndPkIdForOperation = vectorId;
 
                 // For Replace scenario, the vectorId here is for the new image but we need original id to replace which is based on the tag.
                 if (ingestionOperationType == IngestionOperationType.Replace)
                 {
                     int startTagIdValue = startTagId.HasValue ? startTagId.Value : throw new ArgumentNullException("StartId is null");
-                    cosmosDbDocAndPkIdForOperation = startTagIdValue + (vectorId - startVectorId);
+                    document.Id = (startTagIdValue + (vectorId - startVectorId)).ToString();
                 }
-
-                document.Id = cosmosDbDocAndPkIdForOperation.ToString();
 
                 var createTask = CreateIngestionOperationTask(ingestionOperationType,document).ContinueWith(async itemResponse =>
                 {
@@ -215,7 +212,7 @@ namespace VectorIndexScenarioSuite
             int overrideMaxConcurrancy = Convert.ToInt32(this.Configurations["AppSettings:scenario:MaxPhysicalPartitionCount"]);
             int maxConcurrancy = overrideMaxConcurrancy == 0 ? this.MaxPhysicalPartitionCount : overrideMaxConcurrancy;
             await foreach ((int vectorId, float[] vector, string whereClause) in
-                BigANNBinaryFormat.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries, IsWithLabelScenario()))
+JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries, IsWithLabelScenario()))
             {
 
                 var queryDefinition = ConstructQueryDefinition(KVal, vector, whereClause);
@@ -294,14 +291,14 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        private QueryDefinition ConstructQueryDefinition(int K, float[] queryVector, string where)
+        private QueryDefinition ConstructQueryDefinition(int K, float[] queryVector, string whereClause)
         {
             int searchListSizeMultiplier = Convert.ToInt32(this.Configurations["AppSettings:scenario:searchListSizeMultiplier"]);
 
             // empty json object for using default value if multiplier is 0
             string obj_expr = searchListSizeMultiplier == 0 ? "{}" : $"{{ 'searchListSizeMultiplier': {searchListSizeMultiplier} }}";
             string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding) AS similarityScore " +
-                $"FROM c {where} ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false, {obj_expr})";
+                $"FROM c {whereClause} ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false, {obj_expr})";
             
             return new QueryDefinition(queryText).WithParameter("@vectorEmbedding", queryVector);
 
@@ -495,7 +492,7 @@ namespace VectorIndexScenarioSuite
 
                         if (runIngestion && (operationId >= startOperationId))
                         {
-                            await PerformIngestion(IngestionOperationType.Delete, null /*startTagId */, start, numVectors);
+                            await PerformIngestion(IngestionOperationType.Delete, null /* startTagId */, start, numVectors);
                         }
                         totalVectorsDeleted += numVectors;
 
