@@ -18,7 +18,7 @@ namespace VectorIndexScenarioSuite
         protected abstract string EmbeddingPath { get; }
         protected abstract VectorDataType EmbeddingDataType { get; }
         protected abstract DistanceFunction EmbeddingDistanceFunction { get; }
-        protected abstract int EmbeddingDimensions { get; }
+        protected abstract ulong EmbeddingDimensions { get; }
         protected abstract int MaxPhysicalPartitionCount { get; }
         protected abstract string RunName { get; }
         protected static Guid guid = Guid.NewGuid();

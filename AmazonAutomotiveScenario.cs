@@ -13,7 +13,7 @@ namespace VectorIndexScenarioSuite
         protected override string EmbeddingPath => $"/{EmbeddingColumn}";
         protected override VectorDataType EmbeddingDataType => VectorDataType.Float32;
         protected override DistanceFunction EmbeddingDistanceFunction => DistanceFunction.Euclidean;
-        protected override int EmbeddingDimensions => 384;
+        protected override ulong EmbeddingDimensions => 384;
         protected override int MaxPhysicalPartitionCount => 56;
         protected override string RunName => "amazon-" + guid;
 
