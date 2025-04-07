@@ -20,7 +20,7 @@
         {
             switch (scenarioString.Trim().ToLower())
             {
-                case "AmazonAutomotive":
+                case "amazonautomotive":
                     return Scenarios.AmazonAutomotive;
                 case "ms-marco-embedding-only":
                     return Scenarios.MSMarcoEmbeddingOnly;
