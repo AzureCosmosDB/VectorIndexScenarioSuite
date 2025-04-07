@@ -22,6 +22,7 @@ namespace VectorIndexScenarioSuite
         protected abstract int MaxPhysicalPartitionCount { get; }
         protected abstract string RunName { get; }
         protected static Guid guid = Guid.NewGuid();
+        protected virtual bool IsFilterSearch {  get; } = false;
 
         /* Map 'K' -> Neighbor Results
          * Neighbor Results:
@@ -120,14 +121,6 @@ namespace VectorIndexScenarioSuite
             await Task.WhenAll(tasks);
         }
 
-        // check if scenario needs to read label files 
-        protected bool IsWithLabelScenario()
-        {
-            string scenarioName = this.Configurations["AppSettings:scenario:name"] ??
-                throw new ArgumentNullException("AppSettings:scenario:name");
-            return scenarioName.Equals("amazon", StringComparison.OrdinalIgnoreCase);
-        }
-
         protected async Task BulkIngestDataForRange(IngestionOperationType ingestionOperationType, int? startTagId, int startVectorId, int numVectorsToIngest)
         {
             // The batches that the SDK creates to optimize throughput have a current maximum of 2Mb or 100 operations per batch, 
@@ -137,7 +130,7 @@ namespace VectorIndexScenarioSuite
             string logFilePath = Path.Combine(errorLogBasePath, $"{this.RunName}-ingest.log");
 
             int totalVectorsIngested = 0;
-            await foreach (var document in JsonDocumentFactory.GetDocumentAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest, IsWithLabelScenario()))
+            await foreach (var document in JsonDocumentFactory.GetDocumentAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest, IsFilterSearch()))
             {
                 int vectorId = Convert.ToInt32(document.Id);
 
@@ -212,11 +205,10 @@ namespace VectorIndexScenarioSuite
             int overrideMaxConcurrancy = Convert.ToInt32(this.Configurations["AppSettings:scenario:MaxPhysicalPartitionCount"]);
             int maxConcurrancy = overrideMaxConcurrancy == 0 ? this.MaxPhysicalPartitionCount : overrideMaxConcurrancy;
             await foreach ((int vectorId, float[] vector, string whereClause) in
-JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries, IsWithLabelScenario()))
+JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries, IsFilterSearch()))
             {
 
                 var queryDefinition = ConstructQueryDefinition(KVal, vector, whereClause);
-
                 bool retryQueryOnFailureForLatencyMeasurement;
                 do
                 {
@@ -299,7 +291,6 @@ JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVe
             string obj_expr = searchListSizeMultiplier == 0 ? "{}" : $"{{ 'searchListSizeMultiplier': {searchListSizeMultiplier} }}";
             string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding) AS similarityScore " +
                 $"FROM c {whereClause} ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false, {obj_expr})";
-            
             return new QueryDefinition(queryText).WithParameter("@vectorEmbedding", queryVector);
 
         }

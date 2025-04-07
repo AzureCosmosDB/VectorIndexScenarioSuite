@@ -13,6 +13,8 @@ namespace VectorIndexScenarioSuite
         [JsonProperty(PropertyName = "category")]
         private string[] Category { get; }
 
+        // label format : 
+        // BRAND=Caltric,CAT=Automotive,CAT=MotorcyclePowersports,CAT=Parts,CAT=Filters,CAT=OilFilters,RATING=5
         public AmazonAutomotiveDocument(string id, float[] embedding, string label)
             : base(id, embedding) // Call the base class constructor
         {
@@ -56,6 +58,7 @@ namespace VectorIndexScenarioSuite
         }
 
         // Function to create query_clause from query label
+        // query label format : CAT=ExteriorAccessories&RATING=4|RATING=5
         private static List<List<string>> FromQuery(string queryLabel)
         {
             var queryClause = new List<List<string>>();
