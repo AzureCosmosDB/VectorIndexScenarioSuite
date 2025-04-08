@@ -2,7 +2,7 @@
 {
     internal enum Scenarios
     {
-        AmazonAutomotive,
+        AutomotiveEcommerce,
         MSMarcoEmbeddingOnly,
         MSTuringEmbeddingOnly,
         WikiCohereEnglishEmbeddingOnly,
@@ -20,8 +20,8 @@
         {
             switch (scenarioString.Trim().ToLower())
             {
-                case "amazonautomotive":
-                    return Scenarios.AmazonAutomotive;
+                case "automotive-ecommerce":
+                    return Scenarios.AutomotiveEcommerce;
                 case "ms-marco-embedding-only":
                     return Scenarios.MSMarcoEmbeddingOnly;
                 case "ms-turing-embedding-only":

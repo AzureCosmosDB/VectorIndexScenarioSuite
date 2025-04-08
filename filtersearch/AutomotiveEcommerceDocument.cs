@@ -1,8 +1,8 @@
 ﻿using Newtonsoft.Json;
 
-namespace VectorIndexScenarioSuite
+namespace VectorIndexScenarioSuite.filtersearch
 {
-    internal class AmazonAutomotiveDocument : EmbeddingDocumentBase
+    internal class AutomotiveEcommerceDocument : EmbeddingDocumentBase
     {
         [JsonProperty(PropertyName = "brand")]
         private string Brand { get; }
@@ -15,14 +15,14 @@ namespace VectorIndexScenarioSuite
 
         // label format : 
         // BRAND=Caltric,CAT=Automotive,CAT=MotorcyclePowersports,CAT=Parts,CAT=Filters,CAT=OilFilters,RATING=5
-        public AmazonAutomotiveDocument(string id, float[] embedding, string label)
+        public AutomotiveEcommerceDocument(string id, float[] embedding, string label)
             : base(id, embedding) // Call the base class constructor
         {
             // Parse the label string into brand, rating, and category
             var labelJson = ParseAmazonLabelToJson(label);
-            this.Brand = labelJson["brand"]?.ToString() ?? string.Empty;
-            this.Rating = labelJson["rating"]?.ToString() ?? string.Empty;
-            this.Category = ((List<string>?)labelJson["category"])?.ToArray() ?? Array.Empty<string>();
+            Brand = labelJson["brand"]?.ToString() ?? string.Empty;
+            Rating = labelJson["rating"]?.ToString() ?? string.Empty;
+            Category = ((List<string>?)labelJson["category"])?.ToArray() ?? Array.Empty<string>();
         }
 
         public static Dictionary<string, object> ParseAmazonLabelToJson(string line)

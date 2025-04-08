@@ -1,8 +1,8 @@
 ﻿using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Configuration;
-namespace VectorIndexScenarioSuite
+namespace VectorIndexScenarioSuite.filtersearch
 { 
-    internal class AmazonAutomotiveScenario : BigANNBinaryEmbeddingScearioBase
+    internal class AutomotiveEcommerceScenario : BigANNBinaryEmbeddingScearioBase
     {
         protected override string BaseDataFile => "base";
         protected override string BinaryFileExt => "fbin";
@@ -15,10 +15,10 @@ namespace VectorIndexScenarioSuite
         protected override DistanceFunction EmbeddingDistanceFunction => DistanceFunction.Euclidean;
         protected override ulong EmbeddingDimensions => 384;
         protected override int MaxPhysicalPartitionCount => 56;
-        protected override string RunName => "amazon-" + guid;
+        protected override string RunName => "Automotive-" + guid;
         protected override bool IsFilterSearch => true;
 
-        public AmazonAutomotiveScenario(IConfiguration configurations) : 
+        public AutomotiveEcommerceScenario(IConfiguration configurations) : 
             base(configurations, DefaultInitialAndFinalThroughput(configurations).Item1)
         {
         }
@@ -30,7 +30,7 @@ namespace VectorIndexScenarioSuite
 
         public override void Setup()
         {
-            this.ReplaceFinalThroughput(DefaultInitialAndFinalThroughput(this.Configurations).Item2);
+            ReplaceFinalThroughput(DefaultInitialAndFinalThroughput(Configurations).Item2);
         }
 
         private static (int, int) DefaultInitialAndFinalThroughput(IConfiguration configurations)

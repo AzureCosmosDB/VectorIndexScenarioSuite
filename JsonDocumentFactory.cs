@@ -1,5 +1,5 @@
 ﻿using System.Diagnostics;
-using VectorIndexScenarioSuite;
+using VectorIndexScenarioSuite.filtersearch;
 
 namespace VectorIndexScenarioSuite
 {
@@ -12,7 +12,7 @@ namespace VectorIndexScenarioSuite
             {
                 await foreach (var item in BigANNBinaryFormat.GetBinaryDataWithLabelAsync(filePath, dataType, startVectorId, numVectorsToRead))
                 {
-                    yield return new AmazonAutomotiveDocument(item.Item1.ToString(), item.Item2, item.Item3);
+                    yield return new AutomotiveEcommerceDocument(item.Item1.ToString(), item.Item2, item.Item3);
                 }
             }
             else
@@ -30,7 +30,7 @@ namespace VectorIndexScenarioSuite
             {
                 await foreach (var item in BigANNBinaryFormat.GetBinaryDataWithLabelAsync(filePath, dataType, startVectorId, numVectorsToRead))
                 {
-                    string where = AmazonAutomotiveDocument.TryToWhereStatement(item.Item3);
+                    string where = AutomotiveEcommerceDocument.TryToWhereStatement(item.Item3);
 
                     yield return (item.Item1, item.Item2, where);
                 }
