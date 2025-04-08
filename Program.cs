@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System.Diagnostics;
+using VectorIndexScenarioSuite.filtersearch;
 
 
 namespace VectorIndexScenarioSuite
@@ -64,6 +65,8 @@ namespace VectorIndexScenarioSuite
 
             switch (scenarios)
             {
+                case Scenarios.AutomotiveEcommerce:
+                    return new AutomotiveEcommerceScenario(configurations);
                 case Scenarios.MSMarcoEmbeddingOnly:
                     return new MSMarcoEmbeddingOnlyScenario(configurations);
                 case Scenarios.MSTuringEmbeddingOnly:
