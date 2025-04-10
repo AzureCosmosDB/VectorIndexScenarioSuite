@@ -7,7 +7,9 @@
     <Nullable>enable</Nullable>
 	<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
-
+  <PropertyGroup>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.13.1" />
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
@@ -39,5 +41,28 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>         
   </ItemGroup>
-
+  <ItemGroup>
+    <Compile Include="src\BigANNBinaryEmbeddingScearioBase.cs" />
+    <Compile Include="src\BigANNBinaryFormat.cs" />
+    <Compile Include="src\EmbeddingDocumentBase.cs" />
+    <Compile Include="src\GroundTruthValidator.cs" />
+    <Compile Include="src\JsonDocumentFactory.cs" />
+    <Compile Include="src\MSMarcoEmbeddingOnlyScenario.cs" />
+    <Compile Include="src\MSTuringEmbeddingOnlyScenario.cs" />
+    <Compile Include="src\Program.cs" />
+    <Compile Include="src\Runbook.cs" />
+    <Compile Include="src\Scenario.cs" />
+    <Compile Include="src\ScenarioMetrics.cs" />
+    <Compile Include="src\Scenarios.cs" />
+    <Compile Include="src\WikiCohereEnglishEmbeddingBase.cs" />
+    <Compile Include="src\WikiCohereEnglishEmbeddingOnly1MDeleteReplaceStreamingScenario.cs" />
+    <Compile Include="src\WikiCohereEnglishEmbeddingOnly1MDeleteStreamingScenario.cs" />
+    <Compile Include="src\WikiCohereEnglishEmbeddingOnly1MReplaceStreamingScenario.cs" />
+    <Compile Include="src\WikiCohereEnglishEmbeddingOnly35MDeleteReplaceStreamingScenario.cs" />
+    <Compile Include="src\WikiCohereEnglishEmbeddingOnly35MDeleteStreamingScenario.cs" />
+    <Compile Include="src\WikiCohereEnglishEmbeddingOnly35MReplaceStreamingScenario.cs" />
+    <Compile Include="src\WikiCohereEnglishEmbeddingOnlyScenario.cs" />
+    <Compile Include="src\filtersearch\AutomotiveEcommerceDocument.cs" />
+    <Compile Include="src\filtersearch\AutomotiveEcommerceScenario.cs" />
+  </ItemGroup>
 </Project>
