@@ -6,7 +6,7 @@ using System.Collections.ObjectModel;
 namespace VectorIndexScenarioSuite
 {
 
-    abstract class BigANNBinaryEmbeddingScearioBase : Scenario
+    abstract class EmbeddingScearioBase<T>  : Scenario where T : unmanaged
     {
         protected abstract string BaseDataFile { get; }
         protected int SliceCount { get; set; }
@@ -35,7 +35,7 @@ namespace VectorIndexScenarioSuite
 
         protected ScenarioMetrics ingestionMetrics;
 
-        public BigANNBinaryEmbeddingScearioBase(IConfiguration configurations, int throughPut) : 
+        public EmbeddingScearioBase(IConfiguration configurations, int throughPut) : 
             base(configurations, throughPut)
         {
             this.SliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);
@@ -130,7 +130,7 @@ namespace VectorIndexScenarioSuite
             string logFilePath = Path.Combine(errorLogBasePath, $"{this.RunName}-ingest.log");
 
             int totalVectorsIngested = 0;
-            await foreach (var document in JsonDocumentFactory.GetDocumentAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest, this.IsFilterSearch))
+            await foreach (var document in JsonDocumentFactory<T>.GetDocumentAsync(GetBaseDataPath(), startVectorId, numVectorsToIngest, this.IsFilterSearch))
             {
                 int vectorId = Convert.ToInt32(document.Id);
 
@@ -180,18 +180,18 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        private Task<ItemResponse<EmbeddingDocumentBase>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, EmbeddingDocumentBase document)
+        private Task<ItemResponse<EmbeddingDocumentBase<T>>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, EmbeddingDocumentBase<T> document)
         {
             switch (ingestionOperationType)
             {
                 case IngestionOperationType.Insert:
-                    return this.CosmosContainerForIngestion.CreateItemAsync<EmbeddingDocumentBase>(
+                    return this.CosmosContainerForIngestion.CreateItemAsync<EmbeddingDocumentBase<T>>(
                         document, new PartitionKey(document.Id));
                 case IngestionOperationType.Delete:
-                    return this.CosmosContainerForIngestion.DeleteItemAsync<EmbeddingDocumentBase>(
+                    return this.CosmosContainerForIngestion.DeleteItemAsync<EmbeddingDocumentBase<T>>(
                         document.Id, new PartitionKey(document.Id));
                 case IngestionOperationType.Replace:
-                    return this.CosmosContainerForIngestion.ReplaceItemAsync<EmbeddingDocumentBase>(
+                    return this.CosmosContainerForIngestion.ReplaceItemAsync<EmbeddingDocumentBase<T>>(
                         document, document.Id, new PartitionKey(document.Id));
                     throw new NotImplementedException("Replace not implemented yet");
                 default:
@@ -204,8 +204,8 @@ namespace VectorIndexScenarioSuite
             // Issue parallel queries to all partitions, capping this to MAX_PHYSICAL_PARTITION_COUNT but can be override through config.
             int overrideMaxConcurrancy = Convert.ToInt32(this.Configurations["AppSettings:scenario:MaxPhysicalPartitionCount"]);
             int maxConcurrancy = overrideMaxConcurrancy == 0 ? this.MaxPhysicalPartitionCount : overrideMaxConcurrancy;
-            await foreach ((int vectorId, float[] vector, string whereClause) in
-JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries, this.IsFilterSearch))
+            await foreach ((int vectorId, T[] vector, string whereClause) in
+                JsonDocumentFactory<T>.GetQueryAsync(dataPath, 0 /* startVectorId */, numQueries, this.IsFilterSearch))
             {
 
                 var queryDefinition = ConstructQueryDefinition(KVal, vector, whereClause);
@@ -283,7 +283,7 @@ JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVe
             }
         }
 
-        private QueryDefinition ConstructQueryDefinition(int K, float[] queryVector, string whereClause)
+        private QueryDefinition ConstructQueryDefinition(int K, T[] queryVector, string whereClause)
         {
             int searchListSizeMultiplier = Convert.ToInt32(this.Configurations["AppSettings:scenario:searchListSizeMultiplier"]);
 
@@ -377,7 +377,7 @@ JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVe
                     await PerformQuery(true /* isWarmup */, numWarmupQueries, 10 /*KVal*/, GetBaseDataPath());
                 }
 
-                int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
+                int totalQueryVectors = BinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
 
                 // only query specific number of point if specific by the config
                 int numQueries = Convert.ToInt32(this.Configurations["AppSettings:scenario:numQueries"]);
@@ -444,7 +444,7 @@ JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVe
                             this.queryRecallResults = 
                                     new ConcurrentDictionary<int, ConcurrentDictionary<string, List<IdWithSimilarityScore>>>();
 
-                            int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
+                            int totalQueryVectors = BinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
                             for (int kI = 0; kI < K_VALS.Length; kI++)
                             {
                                 Console.WriteLine($"Performing {totalQueryVectors} queries for Recall/RU/Latency stats for K: {K_VALS[kI]}.");

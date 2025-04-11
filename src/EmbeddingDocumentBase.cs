@@ -2,15 +2,15 @@
 
 namespace VectorIndexScenarioSuite
 {
-    internal class EmbeddingDocumentBase
+    internal class EmbeddingDocumentBase<T>
     {
          [JsonProperty(PropertyName = "id")]
         public string Id { get; set; }
 
          [JsonProperty(PropertyName = "embedding")]
-        public float[] Embedding { get; }
+        public T[] Embedding { get; }
 
-        public EmbeddingDocumentBase(string id, float[] embedding)
+        public EmbeddingDocumentBase(string id, T[] embedding)
         {
             this.Id = id;
             this.Embedding = embedding;

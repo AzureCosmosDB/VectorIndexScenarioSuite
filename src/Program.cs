@@ -67,6 +67,8 @@ namespace VectorIndexScenarioSuite
             {
                 case Scenarios.AutomotiveEcommerce:
                     return new AutomotiveEcommerceScenario(configurations);
+                case Scenarios.BigANNEmbeddingOnly:
+                    return new BigANNEmbeddingOnlyScenario(configurations);
                 case Scenarios.MSMarcoEmbeddingOnly:
                     return new MSMarcoEmbeddingOnlyScenario(configurations);
                 case Scenarios.MSTuringEmbeddingOnly:
