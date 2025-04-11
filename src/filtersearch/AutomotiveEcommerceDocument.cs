@@ -2,7 +2,7 @@
 
 namespace VectorIndexScenarioSuite.filtersearch
 {
-    internal class AutomotiveEcommerceDocument : EmbeddingDocumentBase<float>
+    internal class AutomotiveEcommerceDocument<T> : EmbeddingDocumentBase<T>
     {
         [JsonProperty(PropertyName = "brand")]
         private string Brand { get; }
@@ -15,7 +15,7 @@ namespace VectorIndexScenarioSuite.filtersearch
 
         // label format : 
         // BRAND=Caltric,CAT=Automotive,CAT=MotorcyclePowersports,CAT=Parts,CAT=Filters,CAT=OilFilters,RATING=5
-        public AutomotiveEcommerceDocument(string id, float[] embedding, string label)
+        public AutomotiveEcommerceDocument(string id, T[] embedding, string label)
             : base(id, embedding) // Call the base class constructor
         {
             // Parse the label string into brand, rating, and category

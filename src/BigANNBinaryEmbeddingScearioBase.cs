@@ -6,7 +6,7 @@ using System.Collections.ObjectModel;
 namespace VectorIndexScenarioSuite
 {
 
-    abstract class BigANNBinaryEmbeddingScearioBase<T> : Scenario
+    abstract class BigANNBinaryEmbeddingScearioBase<T>  : Scenario where T : unmanaged
     {
         protected abstract string BaseDataFile { get; }
         protected int SliceCount { get; set; }
@@ -130,7 +130,7 @@ namespace VectorIndexScenarioSuite
             string logFilePath = Path.Combine(errorLogBasePath, $"{this.RunName}-ingest.log");
 
             int totalVectorsIngested = 0;
-            await foreach (var document in JsonDocumentFactory.GetDocumentAsync<T>(GetBaseDataPath(), startVectorId, numVectorsToIngest, this.IsFilterSearch))
+            await foreach (var document in JsonDocumentFactory<T>.GetDocumentAsync(GetBaseDataPath(), startVectorId, numVectorsToIngest, this.IsFilterSearch))
             {
                 int vectorId = Convert.ToInt32(document.Id);
 
@@ -205,7 +205,7 @@ namespace VectorIndexScenarioSuite
             int overrideMaxConcurrancy = Convert.ToInt32(this.Configurations["AppSettings:scenario:MaxPhysicalPartitionCount"]);
             int maxConcurrancy = overrideMaxConcurrancy == 0 ? this.MaxPhysicalPartitionCount : overrideMaxConcurrancy;
             await foreach ((int vectorId, T[] vector, string whereClause) in
-JsonDocumentFactory.GetQueryAsync<T>(dataPath, 0 /* startVectorId */, numQueries, this.IsFilterSearch))
+                JsonDocumentFactory<T>.GetQueryAsync(dataPath, 0 /* startVectorId */, numQueries, this.IsFilterSearch))
             {
 
                 var queryDefinition = ConstructQueryDefinition(KVal, vector, whereClause);

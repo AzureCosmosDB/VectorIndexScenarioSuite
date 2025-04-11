@@ -96,7 +96,7 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        internal static async IAsyncEnumerable<(int, T[])> GetBinaryDataAsync<T>(string filePath, int startVectorId, int numVectorsToRead)
+        internal static async IAsyncEnumerable<(int, T[])> GetBinaryDataAsync<T>(string filePath, int startVectorId, int numVectorsToRead) where T : unmanaged
         {
             // Read the header to get the number of vectors and dimensions
             (int totalNumberOfVectors, int dimensions, int headerSize) = GetBinaryDataHeader(filePath);
@@ -127,7 +127,7 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        internal static async IAsyncEnumerable<(int, T[], string)> GetBinaryDataWithLabelAsync<T>(string filePath, int startVectorId, int numVectorsToRead)
+        internal static async IAsyncEnumerable<(int, T[], string)> GetBinaryDataWithLabelAsync<T>(string filePath, int startVectorId, int numVectorsToRead) where T : unmanaged
         {
             // Read the header to get the number of vectors and dimensions
             (int totalNumberOfVectors, int dimensions, int headerSize) = GetBinaryDataHeader(filePath);
