@@ -2,10 +2,10 @@
 using Microsoft.Extensions.Configuration;
 namespace VectorIndexScenarioSuite
 { 
-    internal class BigANNEmbeddingOnlyScenario : EmbeddingScearioBase<uint>
+    internal class BigANNEmbeddingOnlyScenario : EmbeddingScearioBase<byte>
     {
         protected override string BaseDataFile => "base";
-        protected override string BinaryFileExt => "fbin";
+        protected override string BinaryFileExt => "u8bin";
         protected override string QueryFile => "query";
         protected override string GetGroundTruthFileName => "ground_truth";
         protected override string PartitionKeyPath => "/id";
