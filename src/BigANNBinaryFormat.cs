@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace VectorIndexScenarioSuite
 {
@@ -115,7 +116,7 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        internal static async IAsyncEnumerable<(int, float[])> GetBinaryDataAsync(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead)
+        internal static async IAsyncEnumerable<(int, T[])> GetBinaryDataAsync<T>(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead)
         {
             // Read the header to get the number of vectors and dimensions
             (int totalNumberOfVectors, int dimensions, int headerSize) = GetBinaryDataHeader(filePath);
@@ -133,12 +134,12 @@ namespace VectorIndexScenarioSuite
 
                 for (int currentId = startVectorId; currentId < finalVectorId; currentId++)
                 {
-                    float[] vector = new float[dimensions];
+                    T[] vector = new T[dimensions];
                     for (int d = 0; d < dimensions; d++)
                     {
                         var buffer = new byte[sizeof(float)];
                         await fileStream.ReadAsync(buffer, 0, sizeof(float));
-                        vector[d] = BitConverter.ToSingle(buffer, 0);
+                        vector[d] = MemoryMarshal.Read<T>(buffer); // Convert the buffer to the generic type T
                     }
 
                     yield return (currentId, vector);
@@ -146,7 +147,7 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        internal static async IAsyncEnumerable<(int, float[], string)> GetBinaryDataWithLabelAsync(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead)
+        internal static async IAsyncEnumerable<(int, T[], string)> GetBinaryDataWithLabelAsync<T>(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead)
         {
             // Read the header to get the number of vectors and dimensions
             (int totalNumberOfVectors, int dimensions, int headerSize) = GetBinaryDataHeader(filePath);
@@ -172,12 +173,12 @@ namespace VectorIndexScenarioSuite
 
                 for (int currentId = startVectorId; currentId < finalVectorId; currentId++)
                 {
-                    float[] vector = new float[dimensions];
+                    T[] vector = new T[dimensions];
                     for (int d = 0; d < dimensions; d++)
                     {
                         var buffer = new byte[sizeof(float)];
                         await fileStream.ReadAsync(buffer, 0, sizeof(float));
-                        vector[d] = BitConverter.ToSingle(buffer, 0);
+                        vector[d] = MemoryMarshal.Read<T>(buffer); // Convert the buffer to the generic type T
                     }
                     var line = await labelreader.ReadLineAsync();
 

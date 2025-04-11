@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Configuration;
 namespace VectorIndexScenarioSuite
 { 
-    internal class WikiCohereEnglishEmbeddingOnlyScenario : WikiCohereEnglishEmbeddingBase
+    internal class WikiCohereEnglishEmbeddingOnlyScenario : WikiCohereEnglishEmbeddingBase<float>
     {
         protected override string RunName => "wiki-cohere-en-embeddingonly-" + guid;
 

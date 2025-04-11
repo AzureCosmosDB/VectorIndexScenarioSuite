@@ -2,7 +2,7 @@
 
 namespace VectorIndexScenarioSuite.filtersearch
 {
-    internal class AutomotiveEcommerceDocument : EmbeddingDocumentBase
+    internal class AutomotiveEcommerceDocument : EmbeddingDocumentBase<float>
     {
         [JsonProperty(PropertyName = "brand")]
         private string Brand { get; }

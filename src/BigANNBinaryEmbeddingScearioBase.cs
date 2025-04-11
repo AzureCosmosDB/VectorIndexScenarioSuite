@@ -6,7 +6,7 @@ using System.Collections.ObjectModel;
 namespace VectorIndexScenarioSuite
 {
 
-    abstract class BigANNBinaryEmbeddingScearioBase : Scenario
+    abstract class BigANNBinaryEmbeddingScearioBase<T> : Scenario
     {
         protected abstract string BaseDataFile { get; }
         protected int SliceCount { get; set; }
@@ -180,18 +180,18 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        private Task<ItemResponse<EmbeddingDocumentBase>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, EmbeddingDocumentBase document)
+        private Task<ItemResponse<EmbeddingDocumentBase<T>>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, EmbeddingDocumentBase<T> document)
         {
             switch (ingestionOperationType)
             {
                 case IngestionOperationType.Insert:
-                    return this.CosmosContainerForIngestion.CreateItemAsync<EmbeddingDocumentBase>(
+                    return this.CosmosContainerForIngestion.CreateItemAsync<EmbeddingDocumentBase<T>>(
                         document, new PartitionKey(document.Id));
                 case IngestionOperationType.Delete:
-                    return this.CosmosContainerForIngestion.DeleteItemAsync<EmbeddingDocumentBase>(
+                    return this.CosmosContainerForIngestion.DeleteItemAsync<EmbeddingDocumentBase<T>>(
                         document.Id, new PartitionKey(document.Id));
                 case IngestionOperationType.Replace:
-                    return this.CosmosContainerForIngestion.ReplaceItemAsync<EmbeddingDocumentBase>(
+                    return this.CosmosContainerForIngestion.ReplaceItemAsync<EmbeddingDocumentBase<T>>(
                         document, document.Id, new PartitionKey(document.Id));
                     throw new NotImplementedException("Replace not implemented yet");
                 default:
