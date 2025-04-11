@@ -130,7 +130,7 @@ namespace VectorIndexScenarioSuite
             string logFilePath = Path.Combine(errorLogBasePath, $"{this.RunName}-ingest.log");
 
             int totalVectorsIngested = 0;
-            await foreach (var document in JsonDocumentFactory.GetDocumentAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest, this.IsFilterSearch))
+            await foreach (var document in JsonDocumentFactory.GetDocumentAsync<T>(GetBaseDataPath(), startVectorId, numVectorsToIngest, this.IsFilterSearch))
             {
                 int vectorId = Convert.ToInt32(document.Id);
 
@@ -204,8 +204,8 @@ namespace VectorIndexScenarioSuite
             // Issue parallel queries to all partitions, capping this to MAX_PHYSICAL_PARTITION_COUNT but can be override through config.
             int overrideMaxConcurrancy = Convert.ToInt32(this.Configurations["AppSettings:scenario:MaxPhysicalPartitionCount"]);
             int maxConcurrancy = overrideMaxConcurrancy == 0 ? this.MaxPhysicalPartitionCount : overrideMaxConcurrancy;
-            await foreach ((int vectorId, float[] vector, string whereClause) in
-JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries, this.IsFilterSearch))
+            await foreach ((int vectorId, T[] vector, string whereClause) in
+JsonDocumentFactory.GetQueryAsync<T>(dataPath, 0 /* startVectorId */, numQueries, this.IsFilterSearch))
             {
 
                 var queryDefinition = ConstructQueryDefinition(KVal, vector, whereClause);
@@ -283,7 +283,7 @@ JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVe
             }
         }
 
-        private QueryDefinition ConstructQueryDefinition(int K, float[] queryVector, string whereClause)
+        private QueryDefinition ConstructQueryDefinition(int K, T[] queryVector, string whereClause)
         {
             int searchListSizeMultiplier = Convert.ToInt32(this.Configurations["AppSettings:scenario:searchListSizeMultiplier"]);
 

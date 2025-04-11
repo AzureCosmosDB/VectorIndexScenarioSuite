@@ -1,28 +1,8 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace VectorIndexScenarioSuite
 {
-    internal enum BinaryDataType
-    {
-        Float32
-    }
-
-    // Extenion method to return BinaryDataType size in bytes
-    internal static class BinaryDataTypeExtensions
-    {
-        public static int Size(this BinaryDataType dataType)
-        {
-            switch (dataType)
-            {
-                case BinaryDataType.Float32:
-                    return sizeof(float);
-                default:
-                    throw new ArgumentException("Invalid BinaryDataType", nameof(dataType));
-            }
-        }
-    }
-
     /*
      * Parser for BigANNBinaryFormat.
      * Please see: https://big-ann-benchmarks.com/neurips21.html#bench-datasets for format details.
@@ -116,11 +96,11 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        internal static async IAsyncEnumerable<(int, T[])> GetBinaryDataAsync<T>(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead)
+        internal static async IAsyncEnumerable<(int, T[])> GetBinaryDataAsync<T>(string filePath, int startVectorId, int numVectorsToRead)
         {
             // Read the header to get the number of vectors and dimensions
             (int totalNumberOfVectors, int dimensions, int headerSize) = GetBinaryDataHeader(filePath);
-            int vectorSizeInBytes = dimensions * dataType.Size();
+            int vectorSizeInBytes = dimensions * Marshal.SizeOf<T>();
 
             using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true))
             {
@@ -137,8 +117,8 @@ namespace VectorIndexScenarioSuite
                     T[] vector = new T[dimensions];
                     for (int d = 0; d < dimensions; d++)
                     {
-                        var buffer = new byte[sizeof(float)];
-                        await fileStream.ReadAsync(buffer, 0, sizeof(float));
+                        var buffer = new byte[Marshal.SizeOf<T>()];
+                        await fileStream.ReadAsync(buffer, 0, Marshal.SizeOf<T>());
                         vector[d] = MemoryMarshal.Read<T>(buffer); // Convert the buffer to the generic type T
                     }
 
@@ -147,11 +127,11 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        internal static async IAsyncEnumerable<(int, T[], string)> GetBinaryDataWithLabelAsync<T>(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead)
+        internal static async IAsyncEnumerable<(int, T[], string)> GetBinaryDataWithLabelAsync<T>(string filePath, int startVectorId, int numVectorsToRead)
         {
             // Read the header to get the number of vectors and dimensions
             (int totalNumberOfVectors, int dimensions, int headerSize) = GetBinaryDataHeader(filePath);
-            int vectorSizeInBytes = dimensions * dataType.Size();
+            int vectorSizeInBytes = dimensions * Marshal.SizeOf<T>();
 
             using (FileStream labelFileStream = new FileStream(filePath + ".label", FileMode.Open, FileAccess.Read))
             using (StreamReader labelreader = new StreamReader(labelFileStream, bufferSize: 8192))
@@ -176,8 +156,8 @@ namespace VectorIndexScenarioSuite
                     T[] vector = new T[dimensions];
                     for (int d = 0; d < dimensions; d++)
                     {
-                        var buffer = new byte[sizeof(float)];
-                        await fileStream.ReadAsync(buffer, 0, sizeof(float));
+                        var buffer = new byte[Marshal.SizeOf<T>()];
+                        await fileStream.ReadAsync(buffer, 0, Marshal.SizeOf<T>());
                         vector[d] = MemoryMarshal.Read<T>(buffer); // Convert the buffer to the generic type T
                     }
                     var line = await labelreader.ReadLineAsync();
