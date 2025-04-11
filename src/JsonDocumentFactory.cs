@@ -9,14 +9,14 @@ namespace VectorIndexScenarioSuite
         {
             if (includeLabel)
             {
-                await foreach (var item in BigANNBinaryFormat.GetBinaryDataWithLabelAsync<T>(filePath, startVectorId, numVectorsToRead))
+                await foreach (var item in BinaryFormat.GetBinaryDataWithLabelAsync<T>(filePath, startVectorId, numVectorsToRead))
                 {
                     yield return new AutomotiveEcommerceDocument<T>(item.Item1.ToString(), item.Item2, item.Item3);
                 }
             }
             else
             {
-                await foreach (var item in BigANNBinaryFormat.GetBinaryDataAsync<T>(filePath, startVectorId, numVectorsToRead))
+                await foreach (var item in BinaryFormat.GetBinaryDataAsync<T>(filePath, startVectorId, numVectorsToRead))
                 {
                     yield return new EmbeddingDocumentBase<T>(item.Item1.ToString(), item.Item2);
                 }
@@ -27,7 +27,7 @@ namespace VectorIndexScenarioSuite
         {
             if (includeLabel)
             {
-                await foreach (var item in BigANNBinaryFormat.GetBinaryDataWithLabelAsync<T>(filePath, startVectorId, numVectorsToRead))
+                await foreach (var item in BinaryFormat.GetBinaryDataWithLabelAsync<T>(filePath, startVectorId, numVectorsToRead))
                 {
                     string where = AutomotiveEcommerceDocument<T>.TryToWhereStatement(item.Item3);
 
@@ -36,7 +36,7 @@ namespace VectorIndexScenarioSuite
             }
             else
             {
-                await foreach (var item in BigANNBinaryFormat.GetBinaryDataAsync<T>(filePath, startVectorId, numVectorsToRead))
+                await foreach (var item in BinaryFormat.GetBinaryDataAsync<T>(filePath, startVectorId, numVectorsToRead))
                 {
                     yield return (item.Item1, item.Item2, string.Empty);
                 }

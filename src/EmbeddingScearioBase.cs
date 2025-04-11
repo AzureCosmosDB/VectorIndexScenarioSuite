@@ -6,7 +6,7 @@ using System.Collections.ObjectModel;
 namespace VectorIndexScenarioSuite
 {
 
-    abstract class BigANNBinaryEmbeddingScearioBase<T>  : Scenario where T : unmanaged
+    abstract class EmbeddingScearioBase<T>  : Scenario where T : unmanaged
     {
         protected abstract string BaseDataFile { get; }
         protected int SliceCount { get; set; }
@@ -35,7 +35,7 @@ namespace VectorIndexScenarioSuite
 
         protected ScenarioMetrics ingestionMetrics;
 
-        public BigANNBinaryEmbeddingScearioBase(IConfiguration configurations, int throughPut) : 
+        public EmbeddingScearioBase(IConfiguration configurations, int throughPut) : 
             base(configurations, throughPut)
         {
             this.SliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);
@@ -377,7 +377,7 @@ namespace VectorIndexScenarioSuite
                     await PerformQuery(true /* isWarmup */, numWarmupQueries, 10 /*KVal*/, GetBaseDataPath());
                 }
 
-                int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
+                int totalQueryVectors = BinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
 
                 // only query specific number of point if specific by the config
                 int numQueries = Convert.ToInt32(this.Configurations["AppSettings:scenario:numQueries"]);
@@ -444,7 +444,7 @@ namespace VectorIndexScenarioSuite
                             this.queryRecallResults = 
                                     new ConcurrentDictionary<int, ConcurrentDictionary<string, List<IdWithSimilarityScore>>>();
 
-                            int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
+                            int totalQueryVectors = BinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
                             for (int kI = 0; kI < K_VALS.Length; kI++)
                             {
                                 Console.WriteLine($"Performing {totalQueryVectors} queries for Recall/RU/Latency stats for K: {K_VALS[kI]}.");

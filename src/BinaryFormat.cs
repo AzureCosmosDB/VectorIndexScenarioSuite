@@ -7,7 +7,7 @@ namespace VectorIndexScenarioSuite
      * Parser for BigANNBinaryFormat.
      * Please see: https://big-ann-benchmarks.com/neurips21.html#bench-datasets for format details.
      */
-    internal class BigANNBinaryFormat
+    internal class BinaryFormat
     {
         // Return file header (number of vectors and dimensions) and header size (8 bytes)
         public static (int, int, int) GetBinaryDataHeader(string filePath)

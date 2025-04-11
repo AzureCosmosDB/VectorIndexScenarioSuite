@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Configuration;
 namespace VectorIndexScenarioSuite
 { 
-    internal class MSTuringEmbeddingOnlyScenario : EmbeddingScearioBase<float>
+    internal class BigANNEmbeddingOnlyScenario : EmbeddingScearioBase<uint>
     {
         protected override string BaseDataFile => "base";
         protected override string BinaryFileExt => "fbin";
@@ -11,13 +11,13 @@ namespace VectorIndexScenarioSuite
         protected override string PartitionKeyPath => "/id";
         protected override string EmbeddingColumn => "embedding";
         protected override string EmbeddingPath => $"/{EmbeddingColumn}";
-        protected override VectorDataType EmbeddingDataType => VectorDataType.Float32;
+        protected override VectorDataType EmbeddingDataType => VectorDataType.Uint8;
         protected override DistanceFunction EmbeddingDistanceFunction => DistanceFunction.Euclidean;
-        protected override ulong EmbeddingDimensions => 100;
+        protected override ulong EmbeddingDimensions => 128;
         protected override int MaxPhysicalPartitionCount => 56;
-        protected override string RunName => "msturing-embeddingonly-" + guid;
+        protected override string RunName => "BigANN-embeddingonly-" + guid;
 
-        public MSTuringEmbeddingOnlyScenario(IConfiguration configurations) : 
+        public BigANNEmbeddingOnlyScenario(IConfiguration configurations) : 
             base(configurations, DefaultInitialAndFinalThroughput(configurations).Item1)
         {
         }
@@ -34,7 +34,7 @@ namespace VectorIndexScenarioSuite
 
         private static (int, int) DefaultInitialAndFinalThroughput(IConfiguration configurations)
         {
-            // default throughput for MSTuringEmbeddingOnlyScenario
+            // default throughput
             int sliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);
             switch (sliceCount)
             {
