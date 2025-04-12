@@ -7,13 +7,13 @@ namespace VectorIndexScenarioSuite
          [JsonProperty(PropertyName = "id")]
         public string Id { get; set; }
 
-         [JsonProperty(PropertyName = "embedding")]
-        public T[] Embedding { get; }
+        [JsonProperty(PropertyName = "embedding")]
+        public int[] Embedding { get; }
 
         public EmbeddingDocumentBase(string id, T[] embedding)
         {
             this.Id = id;
-            this.Embedding = embedding;
+            this.Embedding = Array.ConvertAll(embedding, item => Convert.ToInt32(item));
         }
     }
 }
