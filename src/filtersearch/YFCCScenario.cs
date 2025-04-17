@@ -1,23 +1,24 @@
 ﻿using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Configuration;
-namespace VectorIndexScenarioSuite
+namespace VectorIndexScenarioSuite.filtersearch
 { 
-    internal class MSTuringEmbeddingOnlyScenario : EmbeddingScearioBase<float>
+    internal class YFCCScenario : EmbeddingScearioBase<byte>
     {
         protected override string BaseDataFile => "base";
-        protected override string BinaryFileExt => "fbin";
+        protected override string BinaryFileExt => "u8bin";
         protected override string QueryFile => "query";
         protected override string GetGroundTruthFileName => "ground_truth";
         protected override string PartitionKeyPath => "/id";
         protected override string EmbeddingColumn => "embedding";
         protected override string EmbeddingPath => $"/{EmbeddingColumn}";
-        protected override VectorDataType EmbeddingDataType => VectorDataType.Float32;
+        protected override VectorDataType EmbeddingDataType => VectorDataType.Uint8;
         protected override DistanceFunction EmbeddingDistanceFunction => DistanceFunction.Euclidean;
-        protected override ulong EmbeddingDimensions => 100;
+        protected override ulong EmbeddingDimensions => 192;
         protected override int MaxPhysicalPartitionCount => 56;
-        protected override string RunName => "msturing-embeddingonly-" + guid;
+        protected override string RunName => "YFCC-" + guid;
+        protected override bool IsFilterSearch => true;
 
-        public MSTuringEmbeddingOnlyScenario(IConfiguration configurations) : 
+        public YFCCScenario(IConfiguration configurations) : 
             base(configurations, DefaultInitialAndFinalThroughput(configurations).Item1)
         {
         }
@@ -29,24 +30,17 @@ namespace VectorIndexScenarioSuite
 
         public override void Setup()
         {
-            this.ReplaceFinalThroughput(DefaultInitialAndFinalThroughput(this.Configurations).Item2);
+            ReplaceFinalThroughput(DefaultInitialAndFinalThroughput(Configurations).Item2);
         }
 
         private static (int, int) DefaultInitialAndFinalThroughput(IConfiguration configurations)
         {
-            // default throughput for MSTuringEmbeddingOnlyScenario
             int sliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);
             switch (sliceCount)
             {
                 case HUNDRED_THOUSAND:
                 case ONE_MILLION:
                     return (6000, 10000);
-                case TEN_MILLION:
-                    return (12000, 20000);
-                case ONE_HUNDRED_MILLION:
-                    return (48000, 80000);
-                case ONE_BILLION:
-                    return (300000, 500000);
                 default:
                     throw new ArgumentException("Invalid slice count.");
             }

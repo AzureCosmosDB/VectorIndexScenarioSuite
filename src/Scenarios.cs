@@ -3,6 +3,7 @@
     internal enum Scenarios
     {
         AutomotiveEcommerce,
+        BigANNEmbeddingOnly,
         MSMarcoEmbeddingOnly,
         MSTuringEmbeddingOnly,
         WikiCohereEnglishEmbeddingOnly,
@@ -11,7 +12,8 @@
         WikiCohereEnglishEmbeddingOnly1MReplaceStreaming,
         WikiCohereEnglishEmbeddingOnly35MDeleteStreaming,
         WikiCohereEnglishEmbeddingOnly35MDeleteReplaceStreaming,
-        WikiCohereEnglishEmbeddingOnly35MReplaceStreaming
+        WikiCohereEnglishEmbeddingOnly35MReplaceStreaming,
+        YFCC
     }
 
     internal static class ScenarioParser
@@ -22,6 +24,8 @@
             {
                 case "automotive-ecommerce":
                     return Scenarios.AutomotiveEcommerce;
+                case "bigann-embedding-only":
+                    return Scenarios.BigANNEmbeddingOnly;
                 case "ms-marco-embedding-only":
                     return Scenarios.MSMarcoEmbeddingOnly;
                 case "ms-turing-embedding-only":
@@ -40,6 +44,8 @@
                     return Scenarios.WikiCohereEnglishEmbeddingOnly35MDeleteReplaceStreaming;
                 case "wiki-cohere-english-embedding-only-35m-replace-streaming":
                     return Scenarios.WikiCohereEnglishEmbeddingOnly35MReplaceStreaming;
+                case "yfcc":
+                    return Scenarios.YFCC;
                 default:
                     throw new ArgumentException("Invalid scenario value", scenarioString);
             }
