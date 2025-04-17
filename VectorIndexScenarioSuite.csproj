@@ -45,6 +45,8 @@
     <Compile Include="src\EmbeddingScearioBase.cs" />
     <Compile Include="src\BinaryFormat.cs" />
     <Compile Include="src\EmbeddingDocumentBase.cs" />
+    <Compile Include="src\filtersearch\YFCCScenario.cs" />
+    <Compile Include="src\filtersearch\YFCCDocument.cs" />
     <Compile Include="src\GroundTruthValidator.cs" />
     <Compile Include="src\JsonDocumentFactory.cs" />
     <Compile Include="src\MSMarcoEmbeddingOnlyScenario.cs" />
