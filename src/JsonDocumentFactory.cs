@@ -11,7 +11,7 @@ namespace VectorIndexScenarioSuite
             {
                 await foreach (var item in BinaryFormat.GetBinaryDataWithLabelAsync<T>(filePath, startVectorId, numVectorsToRead))
                 {
-                    yield return new AutomotiveEcommerceDocument<T>(item.Item1.ToString(), item.Item2, item.Item3);
+                    yield return new YFCCDocument<T>(item.Item1.ToString(), item.Item2, item.Item3);
                 }
             }
             else
@@ -29,7 +29,7 @@ namespace VectorIndexScenarioSuite
             {
                 await foreach (var item in BinaryFormat.GetBinaryDataWithLabelAsync<T>(filePath, startVectorId, numVectorsToRead))
                 {
-                    string where = AutomotiveEcommerceDocument<T>.TryToWhereStatement(item.Item3);
+                    string where = YFCCDocument<T>.TryToWhereStatement(item.Item3);
 
                     yield return (item.Item1, item.Item2, where);
                 }

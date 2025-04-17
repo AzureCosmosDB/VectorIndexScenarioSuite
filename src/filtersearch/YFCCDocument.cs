@@ -2,7 +2,7 @@
 
 namespace VectorIndexScenarioSuite.filtersearch
 {
-    internal class YFCCDocument : EmbeddingDocumentBase<byte>
+    internal class YFCCDocument<T> : EmbeddingDocumentBase<T>
     {
         [JsonProperty(PropertyName = "year")]
         private string Year { get; }
@@ -18,14 +18,14 @@ namespace VectorIndexScenarioSuite.filtersearch
 
         // label format : 
         // BRAND=Caltric,CAT=Automotive,CAT=MotorcyclePowersports,CAT=Parts,CAT=Filters,CAT=OilFilters,RATING=5
-        public YFCCDocument(string id, byte[] embedding, string label)
+        public YFCCDocument(string id, T[] embedding, string label)
             : base(id, embedding) // Call the base class constructor
         {
             var labelJson = ParseLabelToJson(label);
-            Year = labelJson["year"]?.ToString() ?? string.Empty;
-            Month = labelJson["month"]?.ToString() ?? string.Empty;
-            Model = labelJson["model"]?.ToString() ?? string.Empty;
-            Country = labelJson["country"]?.ToString() ?? string.Empty;
+            Year = labelJson.TryGetValue("year", out var year) ? year?.ToString() ?? string.Empty : string.Empty;
+            Month = labelJson.TryGetValue("month", out var month) ? month?.ToString() ?? string.Empty : string.Empty;
+            Model = labelJson.TryGetValue("model", out var model) ? model?.ToString() ?? string.Empty : string.Empty;
+            Country = labelJson.TryGetValue("country", out var country) ? country?.ToString() ?? string.Empty : string.Empty;
         }
 
         public static Dictionary<string, object> ParseLabelToJson(string line)
