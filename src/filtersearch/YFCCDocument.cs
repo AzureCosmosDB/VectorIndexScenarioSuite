@@ -10,8 +10,8 @@ namespace VectorIndexScenarioSuite.filtersearch
         [JsonProperty(PropertyName = "month")]
         private string Month { get; }
 
-        [JsonProperty(PropertyName = "model")]
-        private string Model { get; }
+        [JsonProperty(PropertyName = "camera")]
+        private string Camera { get; }
 
         [JsonProperty(PropertyName = "country")]
         private string Country { get; }
@@ -24,7 +24,7 @@ namespace VectorIndexScenarioSuite.filtersearch
             var labelJson = ParseLabelToJson(label);
             Year = labelJson.TryGetValue("year", out var year) ? year?.ToString() ?? string.Empty : string.Empty;
             Month = labelJson.TryGetValue("month", out var month) ? month?.ToString() ?? string.Empty : string.Empty;
-            Model = labelJson.TryGetValue("model", out var model) ? model?.ToString() ?? string.Empty : string.Empty;
+            Camera = labelJson.TryGetValue("camera", out var model) ? model?.ToString() ?? string.Empty : string.Empty;
             Country = labelJson.TryGetValue("country", out var country) ? country?.ToString() ?? string.Empty : string.Empty;
         }
 
@@ -47,10 +47,10 @@ namespace VectorIndexScenarioSuite.filtersearch
                             result["year"] = value;
                             break;
                         case "month":
-                            result["brand"] = value;
+                            result["month"] = value;
                             break;
-                        case "model":
-                            result["rating"] = value;
+                        case "camera":
+                            result["camera"] = value;
                             break;
                         case "country":
                             result["country"] = value;
@@ -123,8 +123,8 @@ namespace VectorIndexScenarioSuite.filtersearch
                             case "month":
                                 orStatements.Add($"c.month = \"{value}\"");
                                 break;
-                            case "model":
-                                orStatements.Add($"c.model = \"{value}\"");
+                            case "camera":
+                                orStatements.Add($"c.camera = \"{value}\"");
                                 break;
                             case "country":
                                 orStatements.Add($"c.country = \"{value}\"");
