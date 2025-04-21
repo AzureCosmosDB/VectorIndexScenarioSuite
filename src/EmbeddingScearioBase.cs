@@ -223,6 +223,10 @@ namespace VectorIndexScenarioSuite
 
                         if (!isWarmup)
                         {
+                            // add an empty list for the vectorId if it doesn't exist before retrive the reulsts
+                            // for filter search there could be no results returned if the filters don't match any data
+                            this.queryRecallResults[KVal].TryAdd(vectorId.ToString(), new List<IdWithSimilarityScore>(KVal));
+
                             // If we are computing latency and RU stats, don't consider any query with failed requests (implies it was throttled).
                             bool computeLatencyAndRUStats = Convert.ToBoolean(this.Configurations["AppSettings:scenario:computeLatencyAndRUStats"]);
                             if (computeLatencyAndRUStats && queryResponse.Diagnostics.GetFailedRequestCount() > 0)
