@@ -14,7 +14,8 @@ For a detailed explanation and walkthrough of each scenario, refer to our [Cosmo
     This dataset contains :
     - Base data slices of sizes [100K, 10Million and 35Million].
     - Query vectors and corresponding ground truth neighbor identifiers / distances for 5000 vectors not in the base dataset.
-
-    The dataset uses the BigANNBinary format documented at [BigANNBenchmarks](https://big-ann-benchmarks.com/neurips21.html#bench-datasets)
+2. MS-Turing-EmbeddingOnly Scenario :
+   Microsoft Turing-ANNS-1B is a dataset being released by the Microsoft Turing team. It consists of Bing queries encoded by Turing AGI v5 that trains Transformers to capture similarity of intent in web search queries. 
+   The dataset uses the BigANNBinary format documented at [BigANNBenchmarks](https://big-ann-benchmarks.com/neurips21.html#bench-datasets)
 
 Please Watch / Star this repository as we will be adding multiple new scenarios in the near future.
