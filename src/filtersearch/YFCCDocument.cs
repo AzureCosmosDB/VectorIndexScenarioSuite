@@ -2,35 +2,37 @@
 
 namespace VectorIndexScenarioSuite.filtersearch
 {
-    internal class AutomotiveEcommerceDocument<T> : EmbeddingDocumentBase<T>
+    internal class YFCCDocument<T> : EmbeddingDocumentBase<T>
     {
-        [JsonProperty(PropertyName = "brand")]
-        private string Brand { get; }
+        [JsonProperty(PropertyName = "year")]
+        private string Year { get; }
 
-        [JsonProperty(PropertyName = "rating")]
-        private string Rating { get; }
+        [JsonProperty(PropertyName = "month")]
+        private string Month { get; }
 
-        [JsonProperty(PropertyName = "category")]
-        private string[] Category { get; }
+        [JsonProperty(PropertyName = "camera")]
+        private string Camera { get; }
+
+        [JsonProperty(PropertyName = "country")]
+        private string Country { get; }
 
         // label format : 
         // BRAND=Caltric,CAT=Automotive,CAT=MotorcyclePowersports,CAT=Parts,CAT=Filters,CAT=OilFilters,RATING=5
-        public AutomotiveEcommerceDocument(string id, T[] embedding, string label)
+        public YFCCDocument(string id, T[] embedding, string label)
             : base(id, embedding) // Call the base class constructor
         {
-            // Parse the label string into brand, rating, and category
-            var labelJson = ParseAmazonLabelToJson(label);
-            Brand = labelJson["brand"]?.ToString() ?? string.Empty;
-            Rating = labelJson["rating"]?.ToString() ?? string.Empty;
-            Category = ((List<string>?)labelJson["category"])?.ToArray() ?? Array.Empty<string>();
+            var labelJson = ParseLabelToJson(label);
+            Year = labelJson.TryGetValue("year", out var year) ? year?.ToString() ?? string.Empty : string.Empty;
+            Month = labelJson.TryGetValue("month", out var month) ? month?.ToString() ?? string.Empty : string.Empty;
+            Camera = labelJson.TryGetValue("camera", out var model) ? model?.ToString() ?? string.Empty : string.Empty;
+            Country = labelJson.TryGetValue("country", out var country) ? country?.ToString() ?? string.Empty : string.Empty;
         }
 
-        public static Dictionary<string, object> ParseAmazonLabelToJson(string line)
+        public static Dictionary<string, object> ParseLabelToJson(string line)
         {
             var result = new Dictionary<string, object>();
             var parts = line.Split(',');
-            result["category"] = new List<string>();
-
+ 
             foreach (var part in parts)
             {
                 var keyValue = part.Split('=');
@@ -39,16 +41,19 @@ namespace VectorIndexScenarioSuite.filtersearch
                     var key = keyValue[0];
                     var value = keyValue[1];
 
-                    switch (key)
+                    switch (key.ToLower())
                     {
-                        case "CAT":
-                            ((List<string>)result["category"]).Add(value);
+                        case "year":
+                            result["year"] = value;
                             break;
-                        case "BRAND":
-                            result["brand"] = value;
+                        case "month":
+                            result["month"] = value;
                             break;
-                        case "RATING":
-                            result["rating"] = value;
+                        case "camera":
+                            result["camera"] = value;
+                            break;
+                        case "country":
+                            result["country"] = value;
                             break;
                     }
                 }
@@ -110,16 +115,19 @@ namespace VectorIndexScenarioSuite.filtersearch
                     {
                         var field = parts[0];
                         var value = parts[1];
-                        switch (field)
+                        switch (field.ToLower())
                         {
-                            case "CAT":
-                                orStatements.Add($"ARRAY_CONTAINS(c.category,\"{value}\")");
+                            case "year":
+                                orStatements.Add($"c.year = \"{value}\"");
                                 break;
-                            case "RATING":
-                                orStatements.Add($"c.rating = \"{value}\"");
+                            case "month":
+                                orStatements.Add($"c.month = \"{value}\"");
                                 break;
-                            case "BRAND":
-                                orStatements.Add($"c.brand = \"{value}\"");
+                            case "camera":
+                                orStatements.Add($"c.camera = \"{value}\"");
+                                break;
+                            case "country":
+                                orStatements.Add($"c.country = \"{value}\"");
                                 break;
                         }
                     }
