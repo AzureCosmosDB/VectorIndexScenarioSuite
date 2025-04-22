@@ -14,7 +14,7 @@ For a detailed explanation and walkthrough of each scenario, refer to our [Cosmo
     - Base data slices of sizes [100K, 10Million and 35Million].
     - Query vectors and corresponding ground truth neighbor identifiers / distances for 5000 vectors not in the base dataset.
 2. MS-Turing-EmbeddingOnly Scenario :
-   Microsoft Turing-ANNS-1B is a dataset being released by the Microsoft Turing team. It consists of Bing queries encoded by Turing AGI v5 that trains Transformers to capture similarity of intent in web search queries. 
+   Microsoft Turing-ANNS-1B is a dataset released by the Microsoft Turing team. It consists of Bing queries encoded by Turing AGI v5 that trains Transformers to capture similarity of intent in web search queries. 
     This dataset contains :
     - Base data slices of sizes [1Million, 10Million, 100Million and 1 Billion].
     - Query vectors and corresponding ground truth neighbor identifiers / distances for 5000 vectors not in the base dataset.
