@@ -42,7 +42,7 @@
     </None>         
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="src\BigANNBinaryEmbeddingScearioBase.cs" />
+    <Compile Include="src\BigANNBinaryEmbeddingScenarioBase.cs" />
     <Compile Include="src\BigANNBinaryFormat.cs" />
     <Compile Include="src\EmbeddingDocumentBase.cs" />
     <Compile Include="src\GroundTruthValidator.cs" />

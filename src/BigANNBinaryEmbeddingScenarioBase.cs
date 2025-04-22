@@ -6,7 +6,7 @@ using System.Collections.ObjectModel;
 namespace VectorIndexScenarioSuite
 {
 
-    abstract class BigANNBinaryEmbeddingScearioBase : Scenario
+    abstract class BigANNBinaryEmbeddingScenarioBase : Scenario
     {
         protected abstract string BaseDataFile { get; }
         protected int SliceCount { get; set; }
@@ -35,7 +35,7 @@ namespace VectorIndexScenarioSuite
 
         protected ScenarioMetrics ingestionMetrics;
 
-        public BigANNBinaryEmbeddingScearioBase(IConfiguration configurations, int throughPut) : 
+        public BigANNBinaryEmbeddingScenarioBase(IConfiguration configurations, int throughPut) : 
             base(configurations, throughPut)
         {
             this.SliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);
