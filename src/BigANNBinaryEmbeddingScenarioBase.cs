@@ -63,6 +63,31 @@ namespace VectorIndexScenarioSuite
 
         protected override ContainerProperties GetContainerSpec(string containerName)
         {
+
+            bool enableShardedDiskAnn = Convert.ToBoolean(this.Configurations["AppSettings:scenario:enableShardedDiskANN"]);
+            ;
+            VectorIndexPath vectorIndexPath;
+            if (enableShardedDiskAnn)
+            {
+                string shardKey = this.Configurations["AppSettings:scenario:vectorIndexShardKey"]  ?? throw new ArgumentNullException("AppSettings:scenario:vectorIndexShardKey");
+                vectorIndexPath = new VectorIndexPath()
+                {
+                    Path = this.EmbeddingPath,
+                    Type = VectorIndexType.DiskANN,
+                    VectorIndexShardKey = [shardKey],
+                    // IndexingSearchListSize = 100,
+                };
+            }
+            else
+            {
+                vectorIndexPath = new VectorIndexPath()
+                {
+                    Path = this.EmbeddingPath,
+                    Type = VectorIndexType.DiskANN,
+                    // IndexingSearchListSize = 100,
+                };
+            }
+
             ContainerProperties properties = new ContainerProperties(id: containerName, partitionKeyPath: this.PartitionKeyPath)
             {
                 VectorEmbeddingPolicy = new VectorEmbeddingPolicy(new Collection<Embedding>(new List<Embedding>()
@@ -79,14 +104,7 @@ namespace VectorIndexScenarioSuite
                 {
                     VectorIndexes = new()
                     {
-                        new VectorIndexPath()
-                        {
-                            Path = this.EmbeddingPath,
-                            Type = VectorIndexType.DiskANN,
-                            // TODO: not supported configuration, need to update the SDK to support it
-                            // VectorIndexShardKey = ["/brand"],
-                            // IndexingSearchListSize = 100,
-                        }
+                        vectorIndexPath
                     }
                 }
             };
