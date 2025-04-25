@@ -1,34 +1,41 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
 
 namespace VectorIndexScenarioSuite.Tests
 {
-    public class VectorTestBase
+    public abstract class VectorTestBase
     {
         private const string EmulatorBootScriptPath = "bootemulator.ps1";
 
-        protected static string BaseTestParams = @"
+        protected static string VectorTestBaseParams = @"
         {
+            // Emulator auth key is publicly available and okay to be hardcoded.
             ""AppSettings"": {
                 ""deleteContainerOnStart"": true,
                 ""emulatorSettings"": {
                   ""emulatorEndPoint"": ""https://localhost:8081"",
-                  // Emulator auth key is publicly available and okay to be hardcoded.
                   ""emulatorKey"": 
-                        ""C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="",
-                },
+                        ""C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==""
             }
         }";
 
-        public void SetupCommon(IConfiguration configuration)
+        protected IConfiguration Setup(string configuration)
         {
-            bool useEmulator = Convert.ToBoolean(configuration["AppSettings:useEmulator"]);
+            var builder = new ConfigurationBuilder()
+                .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+                .AddJsonStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(configuration)));
+            IConfiguration testConfig = builder.Build();
+
+            Program.TraceConfigKeyValues(testConfig);
+
+            bool useEmulator = testConfig.GetValue<bool>("AppSettings:useEmulator");
             if (useEmulator)
             {
                 StartEmulator();
             }
+
+            return testConfig;
         }
 
         public static string UnionJson(string json1, string json2)

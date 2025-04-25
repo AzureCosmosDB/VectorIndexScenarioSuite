@@ -4,13 +4,12 @@ using Microsoft.Extensions.Configuration;
 namespace VectorIndexScenarioSuite.Tests
 {
     [TestClass]
-    public class WikiCohere10K : VectorTestBase
+    public class WikiCohereTest : VectorTestBase
     {
         // Releveant configurations.
         private static string WikiTestParams = @"
         {
             ""AppSettings"": {
-                ""useEmulator"": true,
                 ""cosmosDatabaseId"": ""wiki-cohere-test-db"",
                 ""cosmosContainerId"": ""wiki-cohere-test-container"",
                 ""name"": ""wiki-cohere-english-embedding-only"",
@@ -30,77 +29,59 @@ namespace VectorIndexScenarioSuite.Tests
             }
         }";
 
-        private string SetupParams => UnionJson(WikiTestParams, BaseTestParams);
-
-        [TestInitialize]
-        public void Setup()
-        {
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
-                .AddJsonStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(WikiTestParams)));
-
-            var configuration = builder.Build();
-            base.SetupCommon(configuration);
-        }
+        private static string SetupParams => UnionJson(WikiTestParams, VectorTestBaseParams);
 
         [TestMethod]
-        public void WikiCohereIngestionOnlyTest()
+        public void WikiCohereCloudBulkIngestionOnlyTest()
         {
             string testSpecificParams = @"
             {
                 ""AppSettings"": {
                     ""scenario"": {
+                        ""useEmulator"": false,
+                        ""accountEndpoint"": ""https://your-account-endpoint.documents.azure.com:443/"",
+                        ""useAADAuth"": true,
+                        ""authKey"": ""your-auth-key"",
                         ""name"": ""wiki-cohere-english-embedding-only"",  
                         ""sliceCount"": ""10000"",
                         ""runIngestion"": true,
                         ""runQuery"": false,
-                        ""ingestWithBulkExecution"": false,
+                        ""ingestWithBulkExecution"": true,
                         ""computeRecall"": false
                     }
             }";
 
             string testParams = UnionJson(SetupParams, testSpecificParams);
+            var configuration = Setup(testParams);
 
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
-                .AddJsonStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testParams)));
-            var testConfig = builder.Build();
-
-            Program.TraceConfigKeyValues(testConfig);
-        
-            Scenario scenario = Program.CreateScenario(testConfig);
+            Scenario scenario = Program.CreateScenario(configuration);
             scenario.Setup();
             scenario.Run().Wait();
             scenario.Stop();
         }
 
         [TestMethod]
-        public void WikiCohereBulkIngestionAndQueryTest()
+        public void WikiCohereEmulatorIngestionAndQueryTest()
         {
             string testSpecificParams = @"
             {
                 ""AppSettings"": {
                     ""scenario"": {
+                        ""useEmulator"": true,
                         ""name"": ""wiki-cohere-english-embedding-only"",
                         ""sliceCount"": ""10000"",
                         ""runIngestion"": true,
                         ""runQuery"": true,
                         ""numQueries"": 100,
-                        ""ingestWithBulkExecution"": true,
-                        ""computeRecall"": true
+                        ""ingestWithBulkExecution"": false,
+                        ""computeRecall"": false
                     }
             }";
 
             string testParams = UnionJson(SetupParams, testSpecificParams);
-
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
-                .AddJsonStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testParams)));
-            var testConfig = builder.Build();
-
-            Program.TraceConfigKeyValues(testConfig);
+            IConfiguration configuration = Setup(testParams);
         
-            Scenario scenario = Program.CreateScenario(testConfig);
+            Scenario scenario = Program.CreateScenario(configuration);
             scenario.Setup();
             scenario.Run().Wait();
             scenario.Stop();
