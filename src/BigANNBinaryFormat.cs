@@ -179,7 +179,7 @@ namespace VectorIndexScenarioSuite
                         await fileStream.ReadAsync(buffer, 0, sizeof(float));
                         vector[d] = BitConverter.ToSingle(buffer, 0);
                     }
-                    var line = await labelreader.ReadLineAsync();
+                    var line = await labelreader.ReadLineAsync() ?? string.Empty;
 
                     yield return (currentId, vector, line);
                 }

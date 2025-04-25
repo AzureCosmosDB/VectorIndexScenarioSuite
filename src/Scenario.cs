@@ -41,6 +41,7 @@ namespace VectorIndexScenarioSuite
         public const int COSMOSDB_MAX_BATCH_SIZE = 100;
 
         /* Known Slices */
+        protected const int TEN_THOUSAND = 10000;
         protected const int HUNDRED_THOUSAND = 100000;
         protected const int ONE_MILLION =  1000000;
         protected const int TEN_MILLION = 10000000;
@@ -60,6 +61,12 @@ namespace VectorIndexScenarioSuite
             this.K_VALS = Array.Empty<int>();
             this.Configurations = configurations;
 
+            bool deleteContainer = Convert.ToBoolean(this.Configurations["AppSettings:deleteContainerOnStart"]);
+            if (deleteContainer)
+            {
+                DeleteContainer();
+            }
+
             bool ingestWithBulkExecution = Convert.ToBoolean(this.Configurations["AppSettings:scenario:ingestWithBulkExecution"]);
             this.CosmosContainerForIngestion = CreateOrGetCollection(throughput, ingestWithBulkExecution /* bulkClient */);
 
@@ -75,7 +82,41 @@ namespace VectorIndexScenarioSuite
 
         protected abstract ContainerProperties GetContainerSpec(string containerName);
 
-        protected Container CreateOrGetCollection(int throughput, bool bulkClient)
+        private void DeleteContainer()
+        {
+            string containerId = 
+                this.Configurations["AppSettings:cosmosContainerId"] ?? throw new ArgumentNullException("cosmosContainerId");
+            string databaseId =
+                this.Configurations["AppSettings:cosmosDatabaseId"] ?? throw new ArgumentNullException("cosmosDatabaseId");
+
+            CosmosClient deleteCosmosClient = CreateCosmosClient(false /* bulkClient */);
+
+            try
+            {
+                Database database = deleteCosmosClient.GetDatabase(databaseId);
+
+                // Check if the container exists else it will throw an exception.
+                database.GetContainer(containerId).ReadContainerAsync().Wait();
+        
+                // If it exists, delete it
+                database.GetContainer(containerId).DeleteContainerAsync().Wait();
+
+                Console.WriteLine($"Database-Container {databaseId}-{containerId} deleted.");
+            }
+            catch (AggregateException ex)
+            {
+                if (ex.InnerException is CosmosException cosmosEx && cosmosEx.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    Console.WriteLine($"Container '{containerId}' does not exist.");
+                }
+                else
+                {
+                    Console.WriteLine($"An error occurred when deleting collection: {ex.InnerException?.Message}");
+                }
+            }
+        }
+
+        private Container CreateOrGetCollection(int throughput, bool bulkClient)
         {
             string init_RU = this.Configurations["AppSettings:cosmosContainerRUInitial"] ?? throw new ArgumentNullException("cosmosContainerRUInitial");
             int init_RUValue = Convert.ToInt32(init_RU);
@@ -131,22 +172,34 @@ namespace VectorIndexScenarioSuite
                 MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(600)
             };
 
-            bool useAADAuth = Convert.ToBoolean(this.Configurations["AppSettings:useAADAuth"]);
-            if (useAADAuth) 
+            bool useEmulator = Convert.ToBoolean(this.Configurations["AppSettings:useEmulator"]);
+            if (useEmulator)
             {
-                return new CosmosClient(
-                    accountEndpoint: this.Configurations["AppSettings:accountEndpoint"],
-                    tokenCredential: new DefaultAzureCredential(),
-                    clientOptions: cosmosClientOptions
-               );
+                    return new CosmosClient(
+                        accountEndpoint: this.Configurations["AppSettings:emulatorSettings:emulatorEndPoint"],
+                        authKeyOrResourceToken: this.Configurations["AppSettings:emulatorSettings:emulatorKey"],
+                        clientOptions: cosmosClientOptions
+                    );
             }
             else
             {
-                return new CosmosClient(
-                    accountEndpoint: this.Configurations["AppSettings:accountEndpoint"],
-                    authKeyOrResourceToken: this.Configurations["AppSettings:authKey"],
-                    clientOptions: cosmosClientOptions
-                );
+                bool useAADAuth = Convert.ToBoolean(this.Configurations["AppSettings:useAADAuth"]);
+                if (useAADAuth) 
+                {
+                    return new CosmosClient(
+                        accountEndpoint: this.Configurations["AppSettings:accountEndpoint"],
+                        tokenCredential: new DefaultAzureCredential(),
+                        clientOptions: cosmosClientOptions
+                   );
+                }
+                else
+                {
+                    return new CosmosClient(
+                        accountEndpoint: this.Configurations["AppSettings:accountEndpoint"],
+                        authKeyOrResourceToken: this.Configurations["AppSettings:authKey"],
+                        clientOptions: cosmosClientOptions
+                    );
+                }
             }
         }
     }
