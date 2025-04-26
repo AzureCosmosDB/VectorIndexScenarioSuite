@@ -63,29 +63,17 @@ namespace VectorIndexScenarioSuite
 
         protected override ContainerProperties GetContainerSpec(string containerName)
         {
+            VectorIndexPath vectorIndexPath = new VectorIndexPath()
+            {
+                Path = this.EmbeddingPath,
+                Type = VectorIndexType.DiskANN,
+            };
 
-            bool enableShardedDiskAnn = Convert.ToBoolean(this.Configurations["AppSettings:scenario:enableShardedDiskANN"]);
-            ;
-            VectorIndexPath vectorIndexPath;
+            bool enableShardedDiskAnn = Convert.ToBoolean(this.Configurations["AppSettings:scenario:sharded:enableShardedDiskANN"]);
             if (enableShardedDiskAnn)
             {
-                string shardKey = this.Configurations["AppSettings:scenario:vectorIndexShardKey"]  ?? throw new ArgumentNullException("AppSettings:scenario:vectorIndexShardKey");
-                vectorIndexPath = new VectorIndexPath()
-                {
-                    Path = this.EmbeddingPath,
-                    Type = VectorIndexType.DiskANN,
-                    VectorIndexShardKey = [shardKey],
-                    // IndexingSearchListSize = 100,
-                };
-            }
-            else
-            {
-                vectorIndexPath = new VectorIndexPath()
-                {
-                    Path = this.EmbeddingPath,
-                    Type = VectorIndexType.DiskANN,
-                    // IndexingSearchListSize = 100,
-                };
+                string shardKey = this.Configurations["AppSettings:scenario:sharded:vectorIndexShardKey"]  ?? throw new ArgumentNullException("AppSettings:scenario:sharded:vectorIndexShardKey");
+                vectorIndexPath.VectorIndexShardKey = [shardKey];
             }
 
             ContainerProperties properties = new ContainerProperties(id: containerName, partitionKeyPath: this.PartitionKeyPath)
