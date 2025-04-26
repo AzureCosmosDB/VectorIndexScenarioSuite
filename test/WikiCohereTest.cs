@@ -13,8 +13,8 @@ namespace VectorIndexScenarioSuite.Tests
                 ""cosmosDatabaseId"": ""wiki-cohere-test-db"",
                 ""cosmosContainerId"": ""wiki-cohere-test-container"",
                 ""name"": ""wiki-cohere-english-embedding-only"",
-                ""dataFilesBasePath"": ""Q:\\dataset\\wiki10m"",
-                ""errorLogBasePath"" : ""Q:\\dataset\\wiki10m"",
+                ""dataFilesBasePath"": ""."",
+                ""errorLogBasePath"" : ""."",
                 ""runIngestion"": true,
                 ""searchListSizeMultiplier"": 10,
                 ""numIngestionBatchCount"": 1,
@@ -37,11 +37,11 @@ namespace VectorIndexScenarioSuite.Tests
             string testSpecificParams = @"
             {
                 ""AppSettings"": {
+                    ""accountEndpoint"": ""https://your-account-endpoint.documents.azure.com:443/"",
+                    ""useAADAuth"": true,
+                    ""authKey"": ""your-auth-key"",
                     ""scenario"": {
                         ""useEmulator"": false,
-                        ""accountEndpoint"": ""https://your-account-endpoint.documents.azure.com:443/"",
-                        ""useAADAuth"": true,
-                        ""authKey"": ""your-auth-key"",
                         ""name"": ""wiki-cohere-english-embedding-only"",  
                         ""sliceCount"": ""10000"",
                         ""runIngestion"": true,
@@ -66,8 +66,8 @@ namespace VectorIndexScenarioSuite.Tests
             string testSpecificParams = @"
             {
                 ""AppSettings"": {
+                    ""useEmulator"": true,
                     ""scenario"": {
-                        ""useEmulator"": true,
                         ""name"": ""wiki-cohere-english-embedding-only"",
                         ""sliceCount"": ""10000"",
                         ""runIngestion"": true,
