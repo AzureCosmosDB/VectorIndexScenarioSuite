@@ -63,6 +63,19 @@ namespace VectorIndexScenarioSuite
 
         protected override ContainerProperties GetContainerSpec(string containerName)
         {
+            VectorIndexPath vectorIndexPath = new VectorIndexPath()
+            {
+                Path = this.EmbeddingPath,
+                Type = VectorIndexType.DiskANN,
+            };
+
+            bool enableShardedDiskAnn = Convert.ToBoolean(this.Configurations["AppSettings:scenario:sharded:enableShardedDiskANN"]);
+            if (enableShardedDiskAnn)
+            {
+                string shardKey = this.Configurations["AppSettings:scenario:sharded:vectorIndexShardKey"]  ?? throw new ArgumentNullException("AppSettings:scenario:sharded:vectorIndexShardKey");
+                vectorIndexPath.VectorIndexShardKey = [shardKey];
+            }
+
             ContainerProperties properties = new ContainerProperties(id: containerName, partitionKeyPath: this.PartitionKeyPath)
             {
                 VectorEmbeddingPolicy = new VectorEmbeddingPolicy(new Collection<Embedding>(new List<Embedding>()
@@ -79,14 +92,7 @@ namespace VectorIndexScenarioSuite
                 {
                     VectorIndexes = new()
                     {
-                        new VectorIndexPath()
-                        {
-                            Path = this.EmbeddingPath,
-                            Type = VectorIndexType.DiskANN,
-                            // TODO: not supported configuration, need to update the SDK to support it
-                            // VectorIndexShardKey = ["/brand"],
-                            // IndexingSearchListSize = 100,
-                        }
+                        vectorIndexPath
                     }
                 }
             };
