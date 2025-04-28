@@ -1,11 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-	<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+	  <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>  
+    <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <PropertyGroup>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
@@ -21,7 +23,7 @@
     <PackageReference Include="YamlDotNet" Version="16.1.0" />
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None> 
+    </None>
     <None Update="runbooks/wikipedia-1M_expirationtime_runbook.yaml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -39,7 +41,10 @@
     </None>
     <None Update="runbooks/wikipedia-35M_expirationtime_replace_delete_runbook.yaml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>         
+    </None> 
+    <None Update="bootemulator.ps1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>        
   </ItemGroup>
   <ItemGroup>
     <Compile Include="src\BigANNBinaryEmbeddingScenarioBase.cs" />
@@ -64,5 +69,14 @@
     <Compile Include="src\WikiCohereEnglishEmbeddingOnlyScenario.cs" />
     <Compile Include="src\filtersearch\AutomotiveEcommerceDocument.cs" />
     <Compile Include="src\filtersearch\AutomotiveEcommerceScenario.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="MSTest.TestAdapter" Version="3.8.3" />
+    <PackageReference Include="MSTest.TestFramework" Version="3.8.3" />    
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="test\WikiCohereTest.cs" />
+    <Compile Include="test\VectorTestBase.cs" />
   </ItemGroup>
 </Project>

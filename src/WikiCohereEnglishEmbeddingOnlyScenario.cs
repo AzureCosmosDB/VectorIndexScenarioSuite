@@ -31,6 +31,7 @@ namespace VectorIndexScenarioSuite
             int sliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);
             switch (sliceCount)
             {
+                case TEN_THOUSAND:
                 case HUNDRED_THOUSAND:
                 case ONE_MILLION:
                     return (400, 10000);

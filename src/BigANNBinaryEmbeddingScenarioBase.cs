@@ -108,6 +108,8 @@ namespace VectorIndexScenarioSuite
         protected async Task PerformIngestion(IngestionOperationType ingestionOperationType, int? startTagId, int startVectorId, int totalVectors)
         {
             int numIngestionBatchCount = Convert.ToInt32(this.Configurations["AppSettings:scenario:numIngestionBatchCount"]);
+            numIngestionBatchCount = (numIngestionBatchCount == 0) ? 1 : numIngestionBatchCount;
+
             if (totalVectors % numIngestionBatchCount != 0)
             {
                 throw new ArgumentException("Total vectors should be evenly divisible by numIngestionBatchCount");
@@ -306,7 +308,6 @@ JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVe
             string directory = this.Configurations["AppSettings:dataFilesBasePath"] ?? 
                 throw new ArgumentNullException("AppSettings:dataFilesBasePath");
 
-            
             string fileName = $"{this.BaseDataFile}_{this.SliceCount}.{this.BinaryFileExt}";
             return Path.Combine(directory, fileName);
         }
