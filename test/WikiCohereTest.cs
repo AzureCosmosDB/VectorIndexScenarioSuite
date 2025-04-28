@@ -40,8 +40,8 @@ namespace VectorIndexScenarioSuite.Tests
                     ""accountEndpoint"": ""https://your-account-endpoint.documents.azure.com:443/"",
                     ""useAADAuth"": true,
                     ""authKey"": ""your-auth-key"",
+                    ""useEmulator"": false,
                     ""scenario"": {
-                        ""useEmulator"": false,
                         ""name"": ""wiki-cohere-english-embedding-only"",  
                         ""sliceCount"": ""10000"",
                         ""runIngestion"": true,
