@@ -33,7 +33,7 @@ namespace VectorIndexScenarioSuite
     }
     
 
-    internal abstract class Scenario
+    public abstract class Scenario
     {
         // The batches that the SDK creates to optimize throughput have a current maximum of 2Mb or 100 operations per batch.
         // Please see: https://devblogs.microsoft.com/cosmosdb/introducing-bulk-support-in-the-net-sdk/

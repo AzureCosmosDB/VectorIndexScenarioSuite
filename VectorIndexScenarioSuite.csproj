@@ -7,7 +7,6 @@
     <Nullable>enable</Nullable>
 	  <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>  
-    <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <PropertyGroup>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
@@ -41,9 +40,6 @@
     </None>
     <None Update="runbooks/wikipedia-35M_expirationtime_replace_delete_runbook.yaml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None> 
-    <None Update="bootemulator.ps1">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>        
   </ItemGroup>
   <ItemGroup>
@@ -69,14 +65,5 @@
     <Compile Include="src\WikiCohereEnglishEmbeddingOnlyScenario.cs" />
     <Compile Include="src\filtersearch\AutomotiveEcommerceDocument.cs" />
     <Compile Include="src\filtersearch\AutomotiveEcommerceScenario.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="MSTest.TestAdapter" Version="3.8.3" />
-    <PackageReference Include="MSTest.TestFramework" Version="3.8.3" />    
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="test\WikiCohereTest.cs" />
-    <Compile Include="test\VectorTestBase.cs" />
   </ItemGroup>
 </Project>

@@ -11,7 +11,6 @@ namespace VectorIndexScenarioSuite.Tests
         {
             ""AppSettings"": {
                 ""cosmosDatabaseId"": ""wiki-cohere-test-db"",
-                ""cosmosContainerId"": ""wiki-cohere-test-container"",
                 ""name"": ""wiki-cohere-english-embedding-only"",
                 ""dataFilesBasePath"": ""."",
                 ""errorLogBasePath"" : ""."",
@@ -38,6 +37,7 @@ namespace VectorIndexScenarioSuite.Tests
             {
                 ""AppSettings"": {
                     ""accountEndpoint"": ""https://your-account-endpoint.documents.azure.com:443/"",
+                    ""cosmosContainerId"": ""WikiCohereCloudBulkIngestionOnlyTest"",
                     ""useAADAuth"": true,
                     ""authKey"": ""your-auth-key"",
                     ""useEmulator"": false,
@@ -67,6 +67,7 @@ namespace VectorIndexScenarioSuite.Tests
             {
                 ""AppSettings"": {
                     ""useEmulator"": true,
+                    ""cosmosContainerId"": ""WikiCohereEmulatorIngestionAndQueryTest"",
                     ""scenario"": {
                         ""name"": ""wiki-cohere-english-embedding-only"",
                         ""sliceCount"": ""10000"",
