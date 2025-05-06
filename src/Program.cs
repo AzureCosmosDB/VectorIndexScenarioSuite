@@ -5,7 +5,7 @@ using VectorIndexScenarioSuite.filtersearch;
 
 namespace VectorIndexScenarioSuite
 {
-    internal class Program
+    public class Program
     {
         static async Task Main(string[] args)
         {

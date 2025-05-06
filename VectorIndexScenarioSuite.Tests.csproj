@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+	  <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>  
+    <IsTestProject>true</IsTestProject>    
+  </PropertyGroup>
+  <PropertyGroup>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup> 
+  <ItemGroup>
+    <None Update="bootemulator.ps1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="MSTest.TestAdapter" Version="3.8.3" />
+    <PackageReference Include="MSTest.TestFramework" Version="3.8.3" />    
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <ProjectReference Include="..\VectorIndexScenarioSuite\VectorIndexScenarioSuite.csproj" />
+  </ItemGroup> 
+  <ItemGroup>
+    <Compile Include="test\WikiCohereTest.cs" />
+    <Compile Include="test\VectorTestBase.cs" />
+  </ItemGroup>  
+</Project>
