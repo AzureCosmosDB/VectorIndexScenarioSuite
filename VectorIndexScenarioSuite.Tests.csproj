@@ -24,6 +24,9 @@
   </ItemGroup> 
   <ItemGroup>
     <Compile Include="test\WikiCohereTest.cs" />
+    <Compile Include="test\YFCCTest.cs" />
+    <Compile Include="test\EmbeddingGeneralizationTest.cs" />
+    <Compile Include="test\ScenarioParsingTest.cs" />
     <Compile Include="test\VectorTestBase.cs" />
   </ItemGroup>  
 </Project>
