@@ -2,7 +2,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 	  <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
@@ -43,6 +43,7 @@
     </None>        
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="src\AssemblyInfo.cs" />
     <Compile Include="src\BigANNBinaryEmbeddingScenarioBase.cs" />
     <Compile Include="src\BigANNBinaryFormat.cs" />
     <Compile Include="src\EmbeddingDocumentBase.cs" />

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 	  <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
@@ -20,10 +20,15 @@
     <PackageReference Include="MSTest.TestAdapter" Version="3.8.3" />
     <PackageReference Include="MSTest.TestFramework" Version="3.8.3" />    
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
-    <ProjectReference Include="..\VectorIndexScenarioSuite\VectorIndexScenarioSuite.csproj" />
+    <ProjectReference Include="VectorIndexScenarioSuite.csproj" />
   </ItemGroup> 
   <ItemGroup>
     <Compile Include="test\WikiCohereTest.cs" />
     <Compile Include="test\VectorTestBase.cs" />
+    <Compile Include="test\ScenarioParsingTests.cs" />
+    <Compile Include="test\BinaryDataTypeTests.cs" />
+    <Compile Include="test\ConfigurationIntegrationTests.cs" />
+    <Compile Include="test\ProgramIntegrationTests.cs" />
+    <Compile Include="test\FileProcessingIntegrationTests.cs" />
   </ItemGroup>  
 </Project>

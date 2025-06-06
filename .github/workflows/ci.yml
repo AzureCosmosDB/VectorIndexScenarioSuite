@@ -1,0 +1,51 @@
+name: CI Integration Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+        
+    - name: Restore dependencies
+      run: dotnet restore VectorIndexScenarioSuite.sln
+      
+    - name: Build
+      run: dotnet build VectorIndexScenarioSuite.sln --no-restore -p:RuntimeIdentifier=
+      
+    - name: Run unit tests
+      run: dotnet test VectorIndexScenarioSuite.Tests.csproj --no-build --verbosity normal --filter "TestCategory=Unit" -p:RuntimeIdentifier=
+      
+    - name: Run integration tests
+      run: dotnet test VectorIndexScenarioSuite.Tests.csproj --no-build --verbosity normal --filter "TestCategory=Integration&TestCategory!=ExternalDependency" -p:RuntimeIdentifier=
+
+  windows-compatibility:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+        
+    - name: Restore dependencies
+      run: dotnet restore VectorIndexScenarioSuite.sln
+      
+    - name: Build Windows
+      run: dotnet build VectorIndexScenarioSuite.sln --no-restore
+      
+    - name: Run unit tests on Windows
+      run: dotnet test VectorIndexScenarioSuite.Tests.csproj --no-build --verbosity normal --filter "TestCategory=Unit"

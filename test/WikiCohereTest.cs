@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 namespace VectorIndexScenarioSuite.Tests
 {
     [TestClass]
+    [TestCategory("Integration")]
     public class WikiCohereTest : VectorTestBase
     {
         // Releveant configurations.
@@ -31,6 +32,7 @@ namespace VectorIndexScenarioSuite.Tests
         private static string SetupParams => UnionJson(WikiTestParams, VectorTestBaseParams);
 
         [TestMethod]
+        [TestCategory("ExternalDependency")]
         public void WikiCohereCloudBulkIngestionOnlyTest()
         {
             string testSpecificParams = @"
@@ -61,6 +63,7 @@ namespace VectorIndexScenarioSuite.Tests
         }
 
         [TestMethod]
+        [TestCategory("ExternalDependency")]
         public void WikiCohereEmulatorIngestionAndQueryTest()
         {
             string testSpecificParams = @"
