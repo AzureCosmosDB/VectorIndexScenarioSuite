@@ -63,6 +63,7 @@
     <Compile Include="src\streaming\WikiCohereEnglishEmbeddingOnly35MDeleteStreamingScenario.cs" />
     <Compile Include="src\streaming\WikiCohereEnglishEmbeddingOnly35MReplaceStreamingScenario.cs" />
     <Compile Include="src\WikiCohereEnglishEmbeddingOnlyScenario.cs" />
+    <Compile Include="src\YFCCEmbeddingOnlyScenario.cs" />
     <Compile Include="src\filtersearch\AutomotiveEcommerceDocument.cs" />
     <Compile Include="src\filtersearch\AutomotiveEcommerceScenario.cs" />
   </ItemGroup>

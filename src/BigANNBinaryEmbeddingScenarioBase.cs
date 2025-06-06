@@ -21,6 +21,7 @@ namespace VectorIndexScenarioSuite
         protected abstract ulong EmbeddingDimensions { get; }
         protected abstract int MaxPhysicalPartitionCount { get; }
         protected abstract string RunName { get; }
+        protected virtual BinaryDataType BinaryEmbeddingDataType { get; } = BinaryDataType.Float32;
         protected static Guid guid = Guid.NewGuid();
         protected virtual bool IsFilterSearch {  get; } = false;
 
@@ -138,7 +139,7 @@ namespace VectorIndexScenarioSuite
             string logFilePath = Path.Combine(errorLogBasePath, $"{this.RunName}-ingest.log");
 
             int totalVectorsIngested = 0;
-            await foreach (var document in JsonDocumentFactory.GetDocumentAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest, this.IsFilterSearch))
+            await foreach (var document in JsonDocumentFactory.GetDocumentAsync(GetBaseDataPath(), this.BinaryEmbeddingDataType, startVectorId, numVectorsToIngest, this.IsFilterSearch))
             {
                 int vectorId = Convert.ToInt32(document.Id);
 
@@ -213,7 +214,7 @@ namespace VectorIndexScenarioSuite
             int overrideMaxConcurrancy = Convert.ToInt32(this.Configurations["AppSettings:scenario:MaxPhysicalPartitionCount"]);
             int maxConcurrancy = overrideMaxConcurrancy == 0 ? this.MaxPhysicalPartitionCount : overrideMaxConcurrancy;
             await foreach ((int vectorId, float[] vector, string whereClause) in
-JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVectorId */, numQueries, this.IsFilterSearch))
+JsonDocumentFactory.GetQueryAsync(dataPath, this.BinaryEmbeddingDataType, 0 /* startVectorId */, numQueries, this.IsFilterSearch))
             {
 
                 var queryDefinition = ConstructQueryDefinition(KVal, vector, whereClause);

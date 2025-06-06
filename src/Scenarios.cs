@@ -11,7 +11,8 @@
         WikiCohereEnglishEmbeddingOnly1MReplaceStreaming,
         WikiCohereEnglishEmbeddingOnly35MDeleteStreaming,
         WikiCohereEnglishEmbeddingOnly35MDeleteReplaceStreaming,
-        WikiCohereEnglishEmbeddingOnly35MReplaceStreaming
+        WikiCohereEnglishEmbeddingOnly35MReplaceStreaming,
+        YFCCEmbeddingOnly
     }
 
     internal static class ScenarioParser
@@ -40,6 +41,8 @@
                     return Scenarios.WikiCohereEnglishEmbeddingOnly35MDeleteReplaceStreaming;
                 case "wiki-cohere-english-embedding-only-35m-replace-streaming":
                     return Scenarios.WikiCohereEnglishEmbeddingOnly35MReplaceStreaming;
+                case "yfcc-embedding-only":
+                    return Scenarios.YFCCEmbeddingOnly;
                 default:
                     throw new ArgumentException("Invalid scenario value", scenarioString);
             }

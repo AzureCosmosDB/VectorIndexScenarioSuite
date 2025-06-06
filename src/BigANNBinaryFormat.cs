@@ -4,7 +4,11 @@ namespace VectorIndexScenarioSuite
 {
     internal enum BinaryDataType
     {
-        Float32
+        Float32,
+        UInt8,
+        Int8,
+        Int16,
+        Float16
     }
 
     // Extenion method to return BinaryDataType size in bytes
@@ -16,6 +20,14 @@ namespace VectorIndexScenarioSuite
             {
                 case BinaryDataType.Float32:
                     return sizeof(float);
+                case BinaryDataType.UInt8:
+                    return sizeof(byte);
+                case BinaryDataType.Int8:
+                    return sizeof(sbyte);
+                case BinaryDataType.Int16:
+                    return sizeof(short);
+                case BinaryDataType.Float16:
+                    return sizeof(ushort); // Half precision is 2 bytes
                 default:
                     throw new ArgumentException("Invalid BinaryDataType", nameof(dataType));
             }
@@ -115,6 +127,30 @@ namespace VectorIndexScenarioSuite
             }
         }
 
+        private static async Task<float> ReadSingleValueAsFloatAsync(FileStream fileStream, BinaryDataType dataType)
+        {
+            var buffer = new byte[dataType.Size()];
+            await fileStream.ReadAsync(buffer, 0, dataType.Size());
+            
+            switch (dataType)
+            {
+                case BinaryDataType.Float32:
+                    return BitConverter.ToSingle(buffer, 0);
+                case BinaryDataType.UInt8:
+                    return (float)buffer[0];
+                case BinaryDataType.Int8:
+                    return (float)(sbyte)buffer[0];
+                case BinaryDataType.Int16:
+                    return (float)BitConverter.ToInt16(buffer, 0);
+                case BinaryDataType.Float16:
+                    // Convert ushort to Half and then to float
+                    ushort halfBits = BitConverter.ToUInt16(buffer, 0);
+                    return (float)BitConverter.UInt16BitsToHalf(halfBits);
+                default:
+                    throw new ArgumentException("Invalid BinaryDataType", nameof(dataType));
+            }
+        }
+
         internal static async IAsyncEnumerable<(int, float[])> GetBinaryDataAsync(string filePath, BinaryDataType dataType, int startVectorId, int numVectorsToRead)
         {
             // Read the header to get the number of vectors and dimensions
@@ -136,9 +172,7 @@ namespace VectorIndexScenarioSuite
                     float[] vector = new float[dimensions];
                     for (int d = 0; d < dimensions; d++)
                     {
-                        var buffer = new byte[sizeof(float)];
-                        await fileStream.ReadAsync(buffer, 0, sizeof(float));
-                        vector[d] = BitConverter.ToSingle(buffer, 0);
+                        vector[d] = await ReadSingleValueAsFloatAsync(fileStream, dataType);
                     }
 
                     yield return (currentId, vector);
@@ -175,9 +209,7 @@ namespace VectorIndexScenarioSuite
                     float[] vector = new float[dimensions];
                     for (int d = 0; d < dimensions; d++)
                     {
-                        var buffer = new byte[sizeof(float)];
-                        await fileStream.ReadAsync(buffer, 0, sizeof(float));
-                        vector[d] = BitConverter.ToSingle(buffer, 0);
+                        vector[d] = await ReadSingleValueAsFloatAsync(fileStream, dataType);
                     }
                     var line = await labelreader.ReadLineAsync() ?? string.Empty;
 
