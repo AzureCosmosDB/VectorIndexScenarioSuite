@@ -63,10 +63,12 @@ namespace VectorIndexScenarioSuite
 
         protected override ContainerProperties GetContainerSpec(string containerName)
         {
+            var quantizationByteSize = Convert.ToInt32(this.Configurations["AppSettings:scenario:quantizationByteSize"]);
             VectorIndexPath vectorIndexPath = new VectorIndexPath()
             {
                 Path = this.EmbeddingPath,
                 Type = VectorIndexType.DiskANN,
+                QuantizationByteSize = quantizationByteSize,
             };
 
             bool enableShardedDiskAnn = Convert.ToBoolean(this.Configurations["AppSettings:scenario:sharded:enableShardedDiskANN"]);
@@ -94,7 +96,7 @@ namespace VectorIndexScenarioSuite
                     {
                         vectorIndexPath
                     }
-                }
+                }                
             };
 
             properties.IndexingPolicy.IncludedPaths.Add(new IncludedPath{ Path = "/" });
