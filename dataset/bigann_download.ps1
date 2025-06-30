@@ -63,13 +63,13 @@ function CreateSlice {
     $writer.Close()
 }
 
-$$destinationFolder = "C:\src\big-ann-benchmarks\data\bigann"
-$basePath = Resolve-Path -Path $destinationFolder\base.1B_1000000000.u8bin
+#$$destinationFolder = "C:\src\big-ann-benchmarks\data\bigann"
+$basePath = Resolve-Path -Path $destinationFolder\base_1000000000.u8bin
 
 # Generate 10M Slice
 $new10MSlicePath = Join-Path $destinationFolder "base_10000000.u8bin"
-CreateSlice -basePath $basePath -newSliceBasePath $new10MSlicePath -numVectors 10000000
+#CreateSlice -basePath $basePath -newSliceBasePath $new10MSlicePath -numVectors 10000000
 
 # Generate 100M Slice
 $new100MSlicePath = Join-Path $destinationFolder "base_100000000.u8bin"
-CreateSlice -basePath $basePath -newSliceBasePath $new100MSlicePath -numVectors 100000000
+#CreateSlice -basePath $basePath -newSliceBasePath $new100MSlicePath -numVectors 100000000

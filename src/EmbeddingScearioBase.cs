@@ -363,8 +363,10 @@ namespace VectorIndexScenarioSuite
 
             if(runIngestion) 
             {
-                int totalVectors = Convert.ToInt32(this.Configurations["AppSettings:scenario:sliceCount"]);
+                //int totalVectors = Convert.ToInt32(this.Configurations["AppSettings:scenario:sliceCount"]);
                 int startVectorId = Convert.ToInt32(this.Configurations["AppSettings:scenario:startVectorId"]);
+                int endVectorId = Convert.ToInt32(this.Configurations["AppSettings:scenario:endVectorId"]);
+                int totalVectors = endVectorId - startVectorId;
                 await PerformIngestion(IngestionOperationType.Insert, null /* startTagId */, startVectorId /* startVectorId */, totalVectors);
             }
 
