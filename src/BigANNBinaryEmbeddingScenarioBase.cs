@@ -1,8 +1,9 @@
 ﻿using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Configuration;
-using Microsoft.VisualBasic;
+using Microsoft.Testing.Platform.Extensions.Messages;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.Numerics;
 
 namespace VectorIndexScenarioSuite
 {
@@ -108,41 +109,50 @@ namespace VectorIndexScenarioSuite
 
         protected async Task PerformIngestion(IngestionOperationType ingestionOperationType, int? startTagId, int startVectorId, int totalVectors)
         {
-            ConcurrentBag<int> failedIds = new ConcurrentBag<int>();
-            if (!Convert.ToBoolean(this.Configurations["AppSettings:onlyIngestFailedIds"]))
+            if (Convert.ToBoolean(this.Configurations["AppSettings:onlyIngestFailedIds"]))
             {
-                int numIngestionBatchCount = Convert.ToInt32(this.Configurations["AppSettings:scenario:numIngestionBatchCount"]);
-                numIngestionBatchCount = (numIngestionBatchCount == 0) ? 1 : numIngestionBatchCount;
-
-                if (totalVectors % numIngestionBatchCount != 0)
-                {
-                    throw new ArgumentException("Total vectors should be evenly divisible by numIngestionBatchCount");
-                }
-                int numVectorsPerRange = totalVectors / numIngestionBatchCount;
-
-                var tasks = new List<Task>(numIngestionBatchCount);
-
-                for (int rangeIndex = 0; rangeIndex < numIngestionBatchCount; rangeIndex++)
-                {
-                    int startVectorIdForRange = startVectorId + (rangeIndex * numVectorsPerRange);
-                    Console.WriteLine(
-                        $"Starting ingestion for operation {ingestionOperationType.ToString()}, range: {rangeIndex} with start vectorId: [{startVectorIdForRange}, " +
-                        $"{startVectorIdForRange + numVectorsPerRange})");
-                    tasks.Add(BulkIngestDataForRange(ingestionOperationType, startTagId, startVectorIdForRange, numVectorsPerRange, failedIds));
-                }
-                await Task.WhenAll(tasks);
+                await RetryFailedIds(ingestionOperationType, startTagId);
             }
-            // Retry ingestion for failed ids.
-            await RetryFailedIds(failedIds, ingestionOperationType, startTagId);
+            else 
+            {
+                // Divide the data into ranges and ingest them in parallel.
+                await DivideDataIntoRangesAndIngest(ingestionOperationType, startTagId, startVectorId, totalVectors);
+            }
         }
 
-        protected async Task BulkIngestDataForRange(IngestionOperationType ingestionOperationType, int? startTagId, int startVectorId, int numVectorsToIngest, ConcurrentBag<int> failedIds)
+        protected async Task DivideDataIntoRangesAndIngest(IngestionOperationType ingestionOperationType, int? startTagId, int startVectorId, int totalVectors)
+        {
+            int numIngestionBatchCount = Convert.ToInt32(this.Configurations["AppSettings:scenario:numIngestionBatchCount"]);
+            numIngestionBatchCount = (numIngestionBatchCount == 0) ? 1 : numIngestionBatchCount;
+
+            if (totalVectors % numIngestionBatchCount != 0)
+            {
+                throw new ArgumentException("Total vectors should be evenly divisible by numIngestionBatchCount");
+            }
+            int numVectorsPerRange = totalVectors / numIngestionBatchCount;
+
+            var tasks = new List<Task>(numIngestionBatchCount);
+
+            for (int rangeIndex = 0; rangeIndex < numIngestionBatchCount; rangeIndex++)
+            {
+                int startVectorIdForRange = startVectorId + (rangeIndex * numVectorsPerRange);
+                Console.WriteLine(
+                    $"Starting ingestion for operation {ingestionOperationType.ToString()}, range: {rangeIndex} with start vectorId: [{startVectorIdForRange}, " +
+                    $"{startVectorIdForRange + numVectorsPerRange})");
+                tasks.Add(BulkIngestDataForRange(ingestionOperationType, startTagId, startVectorIdForRange, numVectorsPerRange));
+            }
+            await Task.WhenAll(tasks);
+        }
+
+        protected async Task BulkIngestDataForRange(IngestionOperationType ingestionOperationType, int? startTagId, int startVectorId, int numVectorsToIngest)
         {
             // The batches that the SDK creates to optimize throughput have a current maximum of 2Mb or 100 operations per batch, 
             List<Task> ingestTasks = new List<Task>(COSMOSDB_MAX_BATCH_SIZE);
             string errorLogBasePath = this.Configurations["AppSettings:errorLogBasePath"] ?? 
                 throw new ArgumentNullException("AppSettings:errorLogBasePath");
             string logFilePath = Path.Combine(errorLogBasePath, $"{this.RunName}-ingest.log");
+
+            string failedIdsPath = Path.Combine(errorLogBasePath, $"{this.RunName}-failedIds.csv");
 
             int totalVectorsIngested = 0;
             await foreach (var document in JsonDocumentFactory.GetDocumentAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest, this.IsFilterSearch))
@@ -161,7 +171,7 @@ namespace VectorIndexScenarioSuite
                     if (!itemResponse.IsCompletedSuccessfully)
                     {
                         Console.WriteLine($"Operation failed for id: {vectorId}");
-                        failedIds.Add(vectorId);
+                        await LogErrorToFile(failedIdsPath, vectorId.ToString());
 
                         // Log the error to a file
                         string errorLogMessage = $"Error for vectorId: {vectorId}, " +
@@ -196,58 +206,45 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        private async Task RetryFailedIds(ConcurrentBag<int> failedIds, IngestionOperationType ingestionOperationType, int? startTagId)
+        private async Task RetryFailedIds(IngestionOperationType ingestionOperationType, int? startTagId)
         {
-            if (Convert.ToBoolean(this.Configurations["AppSettings:onlyIngestFailedIds"]))
-            {
-                PopulateFailedIdsFromFile(failedIds);
-            }
-            ConcurrentBag<int> idsFailedEvenAfterRetry = new ConcurrentBag<int>();
-            string errorLogBasePath = this.Configurations["AppSettings:errorLogBasePath"] ??
-                throw new ArgumentNullException("AppSettings:errorLogBasePath");
-            string logFilePath = Path.Combine(errorLogBasePath, $"{this.RunName}-failedAfterRetry.log");
-
+            List<int> failedIds = PopulateFailedIdsFromFile();
             if (failedIds.Count == 0)
             {
                 Console.WriteLine("No failed ids to retry.");
                 return;
             }
-
             Console.WriteLine("Retrying failed ids for ingestion...");
             foreach (var failedId in failedIds)
             {
                 // Since the failedIds might not be consecutive we need to try them individually hence setting numVectorsToIngest to 1
-                await BulkIngestDataForRange(ingestionOperationType, startTagId, failedId, 1, idsFailedEvenAfterRetry);
-            }
-            
-            if (idsFailedEvenAfterRetry.Count > 0)
-            {
-                Console.WriteLine($"Failed to ingest few ids even after retry. " +
-                    $"Please check the error log file for more details on error.");
-                foreach (var id in idsFailedEvenAfterRetry)
-                {
-                    await LogErrorToFile(logFilePath, id.ToString());
-                }
+                await BulkIngestDataForRange(ingestionOperationType, startTagId, failedId, 1);
             }
         }
 
-        private void PopulateFailedIdsFromFile(ConcurrentBag<int> failedIds)
+        private List<int> PopulateFailedIdsFromFile()
         {
+            List<int> failedIds = new List<int>();
             string failedIdsFilePath = this.Configurations["AppSettings:failedIdsFilePath"] ??
                 throw new ArgumentNullException("AppSettings:failedIdsFilePath");
             if (!File.Exists(failedIdsFilePath))
             {
                 Console.WriteLine($"No failed ids file found at {failedIdsFilePath}. Skipping population of failed ids.");
-                return;
+                return failedIds;
             }
             string[] lines = File.ReadAllLines(failedIdsFilePath);
             foreach (var line in lines)
             {
-                if (int.TryParse(line, out int id))
+                var fields = line.Split(',');
+                foreach (var field in fields)
                 {
-                    failedIds.Add(id);
+                    if (int.TryParse(field.Trim(), out int id))
+                    {
+                        failedIds.Add(id);
+                    }
                 }
             }
+            return failedIds;
         }
 
         private Task<ItemResponse<EmbeddingDocumentBase>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, EmbeddingDocumentBase document)
