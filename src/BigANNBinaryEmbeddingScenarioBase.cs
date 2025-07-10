@@ -116,7 +116,6 @@ namespace VectorIndexScenarioSuite
             int numVectorsPerRange = totalVectors / numIngestionBatchCount;
 
             var tasks = new List<Task>(numIngestionBatchCount);
-
             for (int rangeIndex = 0; rangeIndex < numIngestionBatchCount; rangeIndex++)
             {
                 int startVectorIdForRange = startVectorId + (rangeIndex * numVectorsPerRange);
