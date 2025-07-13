@@ -10,8 +10,7 @@ namespace VectorIndexScenarioSuite.Tests
         private static string WikiTestParams = @"
         {
             ""AppSettings"": {
-                ""cosmosDatabaseId"": ""wiki-cohere-test-db"",
-                ""name"": ""wiki-cohere-english-embedding-only"",
+                ""cosmosDatabaseId"": ""generic-feature-test-db"",
                 ""dataFilesBasePath"": ""."",
                 ""errorLogBasePath"" : ""."",
                 ""runIngestion"": true,
