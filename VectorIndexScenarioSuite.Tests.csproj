@@ -23,6 +23,7 @@
     <ProjectReference Include="..\VectorIndexScenarioSuite\VectorIndexScenarioSuite.csproj" />
   </ItemGroup> 
   <ItemGroup>
+    <Compile Include="test\GenericFeatureTest.cs" />
     <Compile Include="test\WikiCohereTest.cs" />
     <Compile Include="test\VectorTestBase.cs" />
   </ItemGroup>  
