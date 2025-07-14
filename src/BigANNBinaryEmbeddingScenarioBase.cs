@@ -61,16 +61,23 @@ namespace VectorIndexScenarioSuite
             return Path.Combine(directory, fileName);
         }
 
-        protected override ContainerProperties GetContainerSpec(string containerName)
+        public override ContainerProperties GetContainerSpec(string containerName)
         {
-            var quantizationByteSize = Convert.ToInt32(this.Configurations["AppSettings:scenario:quantizationByteSize"]);
             VectorIndexPath vectorIndexPath = new VectorIndexPath()
             {
                 Path = this.EmbeddingPath,
                 Type = VectorIndexType.DiskANN,
-                QuantizationByteSize = quantizationByteSize,
             };
-
+            if (!string.IsNullOrEmpty(this.Configurations["AppSettings:scenario:quantizationByteSize"]))
+            {
+                var quantizationByteSize = Convert.ToInt32(this.Configurations["AppSettings:scenario:quantizationByteSize"]);
+                if (quantizationByteSize <= 0)
+                {
+                    throw new ArgumentException("Quantization byte size should be greater than 0.");
+                }
+                vectorIndexPath.QuantizationByteSize = quantizationByteSize;
+            }
+            
             bool enableShardedDiskAnn = Convert.ToBoolean(this.Configurations["AppSettings:scenario:sharded:enableShardedDiskANN"]);
             if (enableShardedDiskAnn)
             {
