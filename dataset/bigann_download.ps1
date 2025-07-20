@@ -24,7 +24,7 @@ if (-not $skipDownload)
     Invoke-WebRequest "https://dl.fbaipublicfiles.com/billion-scale-ann-benchmarks/bigann/GT.public.1B.ibin" -OutFile $destinationFolder\ground_truth_1000000000
 
     # Query file
-    Invoke-WebRequest "https://dl.fbaipublicfiles.com/billion-scale-ann-benchmarks/bigann/query.public.10K.u8bin" -OutFile $destinationFolder\query.fbin
+    Invoke-WebRequest "https://dl.fbaipublicfiles.com/billion-scale-ann-benchmarks/bigann/query.public.10K.u8bin" -OutFile $destinationFolder\query.u8bin
 
     # Base Dataset
     Invoke-WebRequest "https://dl.fbaipublicfiles.com/billion-scale-ann-benchmarks/bigann/base.1B.u8bin" -OutFile $destinationFolder\base_1000000000.u8bin
@@ -63,7 +63,6 @@ function CreateSlice {
     $writer.Close()
 }
 
-$$destinationFolder = "C:\src\big-ann-benchmarks\data\bigann"
 $basePath = Resolve-Path -Path $destinationFolder\base.1B_1000000000.u8bin
 
 # Generate 10M Slice
