@@ -376,8 +376,10 @@ JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVe
 
             if(runIngestion) 
             {
-                int totalVectors = Convert.ToInt32(this.Configurations["AppSettings:scenario:sliceCount"]);
+                int sliceCount = Convert.ToInt32(this.Configurations["AppSettings:scenario:sliceCount"]);
                 int startVectorId = Convert.ToInt32(this.Configurations["AppSettings:scenario:startVectorId"]);
+                int endVectorId = Convert.ToInt32(this.Configurations["AppSettings:scenario:endVectorId"]);
+                int totalVectors = ((endVectorId == 0) ? sliceCount : endVectorId) - startVectorId;
                 await PerformIngestion(IngestionOperationType.Insert, null /* startTagId */, startVectorId /* startVectorId */, totalVectors);
             }
 
