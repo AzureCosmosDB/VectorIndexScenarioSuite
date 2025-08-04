@@ -478,7 +478,7 @@ JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVe
                 switch (operation.Name)
                 {
                     case "insert":
-                        {
+                    {
                             int startVectorId = operation.Start ?? throw new MissingFieldException("Start missing for insert.");
                             int endVectorId = operation.End ?? throw new MissingFieldException("End missing for insert.");
                             int numVectors = (endVectorId - startVectorId);
@@ -535,7 +535,7 @@ JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVe
                             break;
                         }
                     case "delete":
-                        {
+                    {
                             int start = operation.Start ?? throw new MissingFieldException("Start missing for delete.");
                             int end = operation.End ?? throw new MissingFieldException("End missing for delete.");
                             int numVectors = (end - start);
@@ -551,7 +551,7 @@ JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVe
                             break;
                         }
                     case "replace":
-                        {
+                    {
                             int tagsStart = operation.TagsStart ?? throw new MissingFieldException("TagStart missing for replace.");
                             int tagsEnd = operation.TagsEnd ?? throw new MissingFieldException("TagEnd missing for replace.");
 
@@ -577,7 +577,7 @@ JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVe
                             break;
                         }
                     default:
-                        {
+                    {
                             throw new InvalidOperationException($"Invalid operation {operation.Name} in runbook.");
                         }
                 }
