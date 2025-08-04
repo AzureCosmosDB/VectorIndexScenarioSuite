@@ -452,163 +452,155 @@ JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVe
 
         protected async Task RunStreamingScenario(string runbookPath)
         {
-            bool onlyIngestFailedIds = Convert.ToBoolean(this.Configurations["AppSettings:onlyIngestFailedIds"]);
-            if (onlyIngestFailedIds)
+            Runbook book = await Runbook.Parse(runbookPath);
+
+            int startOperationId = Convert.ToInt32(this.Configurations["AppSettings:scenario:streaming:startOperationId"]);
+            int stopOperationId = Convert.ToInt32(this.Configurations["AppSettings:scenario:streaming:stopOperationId"]);
+
+            bool runIngestion = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runIngestion"]);
+            int totalNetVectorsToIngest = Convert.ToInt32(this.Configurations["AppSettings:scenario:streaming:totalNetVectorsToIngest"]);
+            bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
+
+            int insertSteps = 0;
+            int searchSteps = 0;
+            int deleteSteps = 0;
+            int replaceSteps = 0;
+            int currentVectorCount = 0;
+
+            int totalVectorsInserted = 0;
+            int totalVectorsDeleted = 0;
+            int totalVectorsReplaced = 0;
+            foreach (var operationIdValue in book.RunbookData.Operation)
             {
-                await RetryFailedIds(IngestionOperationType.Insert, null /* startTagId */);
-            }
-            else
-            {
-                Runbook book = await Runbook.Parse(runbookPath);
+                int operationId = Int32.Parse(operationIdValue.Key);
+                Operation operation = operationIdValue.Value;
 
-                int startOperationId = Convert.ToInt32(this.Configurations["AppSettings:scenario:streaming:startOperationId"]);
-                int stopOperationId = Convert.ToInt32(this.Configurations["AppSettings:scenario:streaming:stopOperationId"]);
-
-                bool runIngestion = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runIngestion"]);
-                int totalNetVectorsToIngest = Convert.ToInt32(this.Configurations["AppSettings:scenario:streaming:totalNetVectorsToIngest"]);
-                bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
-
-                int insertSteps = 0;
-                int searchSteps = 0;
-                int deleteSteps = 0;
-                int replaceSteps = 0;
-                int currentVectorCount = 0;
-
-                int totalVectorsInserted = 0;
-                int totalVectorsDeleted = 0;
-                int totalVectorsReplaced = 0;
-                foreach (var operationIdValue in book.RunbookData.Operation)
+                switch (operation.Name)
                 {
-                    int operationId = Int32.Parse(operationIdValue.Key);
-                    Operation operation = operationIdValue.Value;
-
-                    switch (operation.Name)
-                    {
-                        case "insert":
+                    case "insert":
+                        {
+                            int startVectorId = operation.Start ?? throw new MissingFieldException("Start missing for insert.");
+                            int endVectorId = operation.End ?? throw new MissingFieldException("End missing for insert.");
+                            int numVectors = (endVectorId - startVectorId);
+                            if (runIngestion && (operationId >= startOperationId))
                             {
-                                int startVectorId = operation.Start ?? throw new MissingFieldException("Start missing for insert.");
-                                int endVectorId = operation.End ?? throw new MissingFieldException("End missing for insert.");
-                                int numVectors = (endVectorId - startVectorId);
-                                if (runIngestion && (operationId >= startOperationId))
+                                await PerformIngestion(IngestionOperationType.Insert, null /*startTagId */, startVectorId, numVectors);
+                            }
+
+                            totalVectorsInserted += numVectors;
+
+                            // Count insert step even if we skipped it as from runbook execution perspective, it was still done before.
+                            insertSteps++;
+                            break;
+                        }
+                    case "search":
+                        {
+                            // No warmup logic added for now as this scenario is focused on recall.
+                            if (runQuery && (operationId >= startOperationId))
+                            {
+                                // Reset queryRecallResults for each step.
+                                // Query metrics are not reset as they are cumulative across steps.
+                                this.queryRecallResults =
+                                        new ConcurrentDictionary<int, ConcurrentDictionary<string, List<IdWithSimilarityScore>>>();
+
+                                int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
+                                for (int kI = 0; kI < K_VALS.Length; kI++)
                                 {
-                                    await PerformIngestion(IngestionOperationType.Insert, null /*startTagId */, startVectorId, numVectors);
+                                    Console.WriteLine($"Performing {totalQueryVectors} queries for Recall/RU/Latency stats for K: {K_VALS[kI]}.");
+                                    this.queryRecallResults.TryAdd(K_VALS[kI], new ConcurrentDictionary<string, List<IdWithSimilarityScore>>());
+                                    await PerformQuery(false /* isWarmup */, totalQueryVectors, K_VALS[kI] /*KVal*/, GetQueryDataPath());
                                 }
 
-                                totalVectorsInserted += numVectors;
-
-                                // Count insert step even if we skipped it as from runbook execution perspective, it was still done before.
-                                insertSteps++;
-                                break;
-                            }
-                        case "search":
-                            {
-                                // No warmup logic added for now as this scenario is focused on recall.
-                                if (runQuery && (operationId >= startOperationId))
+                                // Compute Recall
+                                bool computeRecall = Convert.ToBoolean(this.Configurations["AppSettings:scenario:computeRecall"]);
+                                if (computeRecall)
                                 {
-                                    // Reset queryRecallResults for each step.
-                                    // Query metrics are not reset as they are cumulative across steps.
-                                    this.queryRecallResults =
-                                            new ConcurrentDictionary<int, ConcurrentDictionary<string, List<IdWithSimilarityScore>>>();
+                                    Console.WriteLine("Computing Recall.");
+                                    GroundTruthValidator groundTruthValidator = new GroundTruthValidator(
+                                        GroundTruthFileType.Binary,
+                                        GetGroundTruthDataPath(operationId));
 
-                                    int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
                                     for (int kI = 0; kI < K_VALS.Length; kI++)
                                     {
-                                        Console.WriteLine($"Performing {totalQueryVectors} queries for Recall/RU/Latency stats for K: {K_VALS[kI]}.");
-                                        this.queryRecallResults.TryAdd(K_VALS[kI], new ConcurrentDictionary<string, List<IdWithSimilarityScore>>());
-                                        await PerformQuery(false /* isWarmup */, totalQueryVectors, K_VALS[kI] /*KVal*/, GetQueryDataPath());
-                                    }
+                                        int kVal = K_VALS[kI];
+                                        float recall = groundTruthValidator.ComputeRecall(kVal, this.queryRecallResults[kVal]);
 
-                                    // Compute Recall
-                                    bool computeRecall = Convert.ToBoolean(this.Configurations["AppSettings:scenario:computeRecall"]);
-                                    if (computeRecall)
-                                    {
-                                        Console.WriteLine("Computing Recall.");
-                                        GroundTruthValidator groundTruthValidator = new GroundTruthValidator(
-                                            GroundTruthFileType.Binary,
-                                            GetGroundTruthDataPath(operationId));
-
-                                        for (int kI = 0; kI < K_VALS.Length; kI++)
-                                        {
-                                            int kVal = K_VALS[kI];
-                                            float recall = groundTruthValidator.ComputeRecall(kVal, this.queryRecallResults[kVal]);
-
-                                            Console.WriteLine($"Recall for K = {kVal} is {recall}.");
-                                        }
+                                        Console.WriteLine($"Recall for K = {kVal} is {recall}.");
                                     }
                                 }
-
-                                // Count search step even if we skipped it as from runbook execution perspective, it was still done before.
-                                searchSteps++;
-                                break;
                             }
-                        case "delete":
+
+                            // Count search step even if we skipped it as from runbook execution perspective, it was still done before.
+                            searchSteps++;
+                            break;
+                        }
+                    case "delete":
+                        {
+                            int start = operation.Start ?? throw new MissingFieldException("Start missing for delete.");
+                            int end = operation.End ?? throw new MissingFieldException("End missing for delete.");
+                            int numVectors = (end - start);
+
+                            if (runIngestion && (operationId >= startOperationId))
                             {
-                                int start = operation.Start ?? throw new MissingFieldException("Start missing for delete.");
-                                int end = operation.End ?? throw new MissingFieldException("End missing for delete.");
-                                int numVectors = (end - start);
-
-                                if (runIngestion && (operationId >= startOperationId))
-                                {
-                                    await PerformIngestion(IngestionOperationType.Delete, null /* startTagId */, start, numVectors);
-                                }
-                                totalVectorsDeleted += numVectors;
-
-                                // Count delete step even if we skipped it as from runbook execution perspective, it was still done before.
-                                deleteSteps++;
-                                break;
+                                await PerformIngestion(IngestionOperationType.Delete, null /* startTagId */, start, numVectors);
                             }
-                        case "replace":
+                            totalVectorsDeleted += numVectors;
+
+                            // Count delete step even if we skipped it as from runbook execution perspective, it was still done before.
+                            deleteSteps++;
+                            break;
+                        }
+                    case "replace":
+                        {
+                            int tagsStart = operation.TagsStart ?? throw new MissingFieldException("TagStart missing for replace.");
+                            int tagsEnd = operation.TagsEnd ?? throw new MissingFieldException("TagEnd missing for replace.");
+
+                            int vectorIdsStart = operation.IdsStart ?? throw new MissingFieldException("IdsStart missing for replace.");
+                            int vectorIdsEnd = operation.IdsEnd ?? throw new MissingFieldException("IdsEnd missing for replace.");
+
+                            int numVectors = (vectorIdsEnd - vectorIdsStart);
+                            int numTags = (tagsEnd - tagsStart);
+
+                            if (numTags != numVectors)
                             {
-                                int tagsStart = operation.TagsStart ?? throw new MissingFieldException("TagStart missing for replace.");
-                                int tagsEnd = operation.TagsEnd ?? throw new MissingFieldException("TagEnd missing for replace.");
-
-                                int vectorIdsStart = operation.IdsStart ?? throw new MissingFieldException("IdsStart missing for replace.");
-                                int vectorIdsEnd = operation.IdsEnd ?? throw new MissingFieldException("IdsEnd missing for replace.");
-
-                                int numVectors = (vectorIdsEnd - vectorIdsStart);
-                                int numTags = (tagsEnd - tagsStart);
-
-                                if (numTags != numVectors)
-                                {
-                                    throw new ArgumentException("Number of tags and vectors should be equal for replace operation.");
-                                }
-
-                                if (runIngestion && (operationId >= startOperationId))
-                                {
-                                    await PerformIngestion(IngestionOperationType.Replace, tagsStart, vectorIdsStart, numVectors);
-                                }
-                                totalVectorsReplaced += numVectors;
-
-                                // Count replace step even if we skipped it as from runbook execution perspective, it was still done before.
-                                replaceSteps++;
-                                break;
+                                throw new ArgumentException("Number of tags and vectors should be equal for replace operation.");
                             }
-                        default:
+
+                            if (runIngestion && (operationId >= startOperationId))
                             {
-                                throw new InvalidOperationException($"Invalid operation {operation.Name} in runbook.");
+                                await PerformIngestion(IngestionOperationType.Replace, tagsStart, vectorIdsStart, numVectors);
                             }
-                    }
+                            totalVectorsReplaced += numVectors;
 
-                    Console.WriteLine($"Executed Operation: {operation.Name} with OperationId: {operationId}");
-
-                    currentVectorCount = totalVectorsInserted - totalVectorsDeleted;
-                    if (currentVectorCount > totalNetVectorsToIngest || operationId > stopOperationId)
-                    {
-                        Console.WriteLine($"Exiting after finishing Step {operationId}.");
-                        break;
-                    }
+                            // Count replace step even if we skipped it as from runbook execution perspective, it was still done before.
+                            replaceSteps++;
+                            break;
+                        }
+                    default:
+                        {
+                            throw new InvalidOperationException($"Invalid operation {operation.Name} in runbook.");
+                        }
                 }
 
-                Console.WriteLine($"Final vector count after ingestion in collection: {currentVectorCount}, " +
-                    $"inserts {totalVectorsInserted}, deletes {totalVectorsDeleted}, replaces {totalVectorsReplaced}," +
-                    $"total vectors to be ingested as per appSettings: {totalNetVectorsToIngest}. ");
-                int totalSteps = insertSteps + deleteSteps + searchSteps;
-                Console.WriteLine($"Executed {totalSteps} total steps with {insertSteps} insert steps, {deleteSteps} delete steps, {replaceSteps} replace steps" +
-                    $" and {searchSteps} query steps.");
-                Console.WriteLine($"Experiment End time in UTC: {DateTime.Now.ToUniversalTime()}");
-            }
-        }
+                Console.WriteLine($"Executed Operation: {operation.Name} with OperationId: {operationId}");
 
+                currentVectorCount = totalVectorsInserted - totalVectorsDeleted;
+                if (currentVectorCount > totalNetVectorsToIngest || operationId > stopOperationId)
+                {
+                    Console.WriteLine($"Exiting after finishing Step {operationId}.");
+                    break;
+                }
+            }
+
+            Console.WriteLine($"Final vector count after ingestion in collection: {currentVectorCount}, " +
+                $"inserts {totalVectorsInserted}, deletes {totalVectorsDeleted}, replaces {totalVectorsReplaced}," +
+                $"total vectors to be ingested as per appSettings: {totalNetVectorsToIngest}. ");
+            int totalSteps = insertSteps + deleteSteps + searchSteps;
+            Console.WriteLine($"Executed {totalSteps} total steps with {insertSteps} insert steps, {deleteSteps} delete steps, {replaceSteps} replace steps" +
+                $" and {searchSteps} query steps.");
+            Console.WriteLine($"Experiment End time in UTC: {DateTime.Now.ToUniversalTime()}");
+        }
+        
         public override void Stop()
         {
             bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
