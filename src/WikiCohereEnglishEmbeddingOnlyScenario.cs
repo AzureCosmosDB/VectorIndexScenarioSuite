@@ -35,8 +35,6 @@ namespace VectorIndexScenarioSuite
                 case HUNDRED_THOUSAND:
                 case ONE_MILLION:
                     return (400, 10000);
-                case TEN_MILLION:
-                    return (12000, 20000);
                 case THIRTY_FIVE_MILLION:
                     return (40000, 70000);
                 default:

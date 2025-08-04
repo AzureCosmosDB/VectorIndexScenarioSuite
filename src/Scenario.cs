@@ -80,7 +80,7 @@ namespace VectorIndexScenarioSuite
 
         public abstract void Stop();
 
-        public abstract ContainerProperties GetContainerSpec(string containerName);
+        protected abstract ContainerProperties GetContainerSpec(string containerName);
 
         private void DeleteContainer()
         {

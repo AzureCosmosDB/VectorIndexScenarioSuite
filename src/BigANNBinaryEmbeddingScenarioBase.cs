@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Configuration;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
-
 namespace VectorIndexScenarioSuite
 {
 
@@ -61,23 +60,14 @@ namespace VectorIndexScenarioSuite
             return Path.Combine(directory, fileName);
         }
 
-        public override ContainerProperties GetContainerSpec(string containerName)
+        protected override ContainerProperties GetContainerSpec(string containerName)
         {
             VectorIndexPath vectorIndexPath = new VectorIndexPath()
             {
                 Path = this.EmbeddingPath,
                 Type = VectorIndexType.DiskANN,
             };
-            if (!string.IsNullOrEmpty(this.Configurations["AppSettings:scenario:quantizationByteSize"]))
-            {
-                var quantizationByteSize = Convert.ToInt32(this.Configurations["AppSettings:scenario:quantizationByteSize"]);
-                if (quantizationByteSize <= 0)
-                {
-                    throw new ArgumentException("Quantization byte size should be greater than 0.");
-                }
-                vectorIndexPath.QuantizationByteSize = quantizationByteSize;
-            }
-            
+
             bool enableShardedDiskAnn = Convert.ToBoolean(this.Configurations["AppSettings:scenario:sharded:enableShardedDiskANN"]);
             if (enableShardedDiskAnn)
             {
@@ -103,7 +93,7 @@ namespace VectorIndexScenarioSuite
                     {
                         vectorIndexPath
                     }
-                }                
+                }
             };
 
             properties.IndexingPolicy.IncludedPaths.Add(new IncludedPath{ Path = "/" });
@@ -134,7 +124,6 @@ namespace VectorIndexScenarioSuite
                     $"{startVectorIdForRange + numVectorsPerRange})");
                 tasks.Add(BulkIngestDataForRange(ingestionOperationType, startTagId, startVectorIdForRange, numVectorsPerRange));
             }
-
             await Task.WhenAll(tasks);
         }
 
@@ -145,6 +134,8 @@ namespace VectorIndexScenarioSuite
             string errorLogBasePath = this.Configurations["AppSettings:errorLogBasePath"] ?? 
                 throw new ArgumentNullException("AppSettings:errorLogBasePath");
             string logFilePath = Path.Combine(errorLogBasePath, $"{this.RunName}-ingest.log");
+
+            string failedIdsPath = Path.Combine(errorLogBasePath, $"{this.RunName}-failedIds.csv");
 
             int totalVectorsIngested = 0;
             await foreach (var document in JsonDocumentFactory.GetDocumentAsync(GetBaseDataPath(), BinaryDataType.Float32, startVectorId, numVectorsToIngest, this.IsFilterSearch))
@@ -162,7 +153,8 @@ namespace VectorIndexScenarioSuite
                 {
                     if (!itemResponse.IsCompletedSuccessfully)
                     {
-                        Console.WriteLine($"Operation failed for id: {vectorId}.");
+                        Console.WriteLine($"Operation failed for id: {vectorId}");
+                        await LogErrorToFile(failedIdsPath, vectorId.ToString());
 
                         // Log the error to a file
                         string errorLogMessage = $"Error for vectorId: {vectorId}, " +
@@ -195,6 +187,47 @@ namespace VectorIndexScenarioSuite
                 ingestTasks.Clear();
                 Console.WriteLine($"Ingested {totalVectorsIngested} documents for range with start vectorId {startVectorId}");
             }
+        }
+
+        private async Task RetryFailedIds(IngestionOperationType ingestionOperationType, int? startTagId)
+        {
+            List<int> failedIds = PopulateFailedIdsFromFile();
+            if (failedIds.Count == 0)
+            {
+                Console.WriteLine("No failed ids to retry.");
+                return;
+            }
+            Console.WriteLine("Retrying failed ids for ingestion...");
+            foreach (var failedId in failedIds)
+            {
+                // Since the failedIds might not be consecutive we need to try them individually hence setting numVectorsToIngest to 1
+                await BulkIngestDataForRange(ingestionOperationType, startTagId, failedId, 1);
+            }
+        }
+
+        private List<int> PopulateFailedIdsFromFile()
+        {
+            List<int> failedIds = new List<int>();
+            string failedIdsFilePath = this.Configurations["AppSettings:failedIdsFilePath"] ??
+                throw new ArgumentNullException("AppSettings:failedIdsFilePath");
+            if (!File.Exists(failedIdsFilePath))
+            {
+                Console.WriteLine($"No failed ids file found at {failedIdsFilePath}. Skipping population of failed ids.");
+                return failedIds;
+            }
+            string[] lines = File.ReadAllLines(failedIdsFilePath);
+            foreach (var line in lines)
+            {
+                var fields = line.Split(',');
+                foreach (var field in fields)
+                {
+                    if (int.TryParse(field.Trim(), out int id))
+                    {
+                        failedIds.Add(id);
+                    }
+                }
+            }
+            return failedIds;
         }
 
         private Task<ItemResponse<EmbeddingDocumentBase>> CreateIngestionOperationTask(IngestionOperationType ingestionOperationType, EmbeddingDocumentBase document)
@@ -368,41 +401,51 @@ JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVe
 
         protected async Task RunScenario()
         {
-            /* Default with following steps :
-             * 1) Bulk Ingest 'scenario:slice' number of documents into Cosmos container.
-             * 2) Query Cosmos container for a query-set and calculate recall for Nearest Neighbor search.
-             */
-             bool runIngestion = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runIngestion"]);
-
-            if(runIngestion) 
+            bool onlyIngestFailedIds = Convert.ToBoolean(this.Configurations["AppSettings:onlyIngestFailedIds"]);
+            if (onlyIngestFailedIds)
             {
-                int totalVectors = Convert.ToInt32(this.Configurations["AppSettings:scenario:sliceCount"]);
-                int startVectorId = Convert.ToInt32(this.Configurations["AppSettings:scenario:startVectorId"]);
-                await PerformIngestion(IngestionOperationType.Insert, null /* startTagId */, startVectorId /* startVectorId */, totalVectors);
+                await RetryFailedIds(IngestionOperationType.Insert, null /* startTagId */);
             }
-
-            bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
-
-            if(runQuery)
+            else
             {
-                bool performWarmup = Convert.ToBoolean(this.Configurations["AppSettings:scenario:warmup:enabled"]);
-                if (performWarmup)
+                /* Default with following steps :
+                 * 1) Bulk Ingest 'scenario:slice' number of documents into Cosmos container.
+                 * 2) Query Cosmos container for a query-set and calculate recall for Nearest Neighbor search.
+                 */
+                bool runIngestion = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runIngestion"]);
+
+                if (runIngestion)
                 {
-                    int numWarmupQueries = Convert.ToInt32(this.Configurations["AppSettings:scenario:warmup:numWarmupQueries"]);
-                    Console.WriteLine($"Performing {numWarmupQueries} queries for Warmup.");
-                    await PerformQuery(true /* isWarmup */, numWarmupQueries, 10 /*KVal*/, GetBaseDataPath());
+                    int sliceCount = Convert.ToInt32(this.Configurations["AppSettings:scenario:sliceCount"]);
+                    int startVectorId = Convert.ToInt32(this.Configurations["AppSettings:scenario:startVectorId"]);
+                    int endVectorId = Convert.ToInt32(this.Configurations["AppSettings:scenario:endVectorId"]);
+                    int totalVectors = ((endVectorId == 0 || endVectorId < startVectorId) ? sliceCount : endVectorId) - startVectorId;
+                    await PerformIngestion(IngestionOperationType.Insert, null /* startTagId */, startVectorId /* startVectorId */, totalVectors);
                 }
 
-                int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
+                bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
 
-                // only query specific number of point if specific by the config
-                int numQueries = Convert.ToInt32(this.Configurations["AppSettings:scenario:numQueries"]);
-                numQueries = numQueries == 0 ? totalQueryVectors : numQueries;
-
-                for (int kI = 0; kI < K_VALS.Length; kI++)
+                if (runQuery)
                 {
-                    Console.WriteLine($"Performing {numQueries} queries for Recall/RU/Latency stats for K: {K_VALS[kI]}.");
-                    await PerformQuery(false /* isWarmup */, numQueries, K_VALS[kI] /*KVal*/, GetQueryDataPath());
+                    bool performWarmup = Convert.ToBoolean(this.Configurations["AppSettings:scenario:warmup:enabled"]);
+                    if (performWarmup)
+                    {
+                        int numWarmupQueries = Convert.ToInt32(this.Configurations["AppSettings:scenario:warmup:numWarmupQueries"]);
+                        Console.WriteLine($"Performing {numWarmupQueries} queries for Warmup.");
+                        await PerformQuery(true /* isWarmup */, numWarmupQueries, 10 /*KVal*/, GetBaseDataPath());
+                    }
+
+                    int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
+
+                    // only query specific number of point if specific by the config
+                    int numQueries = Convert.ToInt32(this.Configurations["AppSettings:scenario:numQueries"]);
+                    numQueries = numQueries == 0 ? totalQueryVectors : numQueries;
+
+                    for (int kI = 0; kI < K_VALS.Length; kI++)
+                    {
+                        Console.WriteLine($"Performing {numQueries} queries for Recall/RU/Latency stats for K: {K_VALS[kI]}.");
+                        await PerformQuery(false /* isWarmup */, numQueries, K_VALS[kI] /*KVal*/, GetQueryDataPath());
+                    }
                 }
             }
         }
@@ -557,7 +600,7 @@ JsonDocumentFactory.GetQueryAsync(dataPath, BinaryDataType.Float32, 0 /* startVe
                 $" and {searchSteps} query steps.");
             Console.WriteLine($"Experiment End time in UTC: {DateTime.Now.ToUniversalTime()}");
         }
-
+        
         public override void Stop()
         {
             bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
