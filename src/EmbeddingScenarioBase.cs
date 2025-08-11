@@ -304,13 +304,16 @@ namespace VectorIndexScenarioSuite
         {
             int searchListSizeMultiplier = Convert.ToInt32(this.Configurations["AppSettings:scenario:searchListSizeMultiplier"]);
 
-            int[] queryVectorInt = queryVector.Select(element => Convert.ToInt32(element))
-                .ToArray();
+            Array serializedVector = EmbeddingDocumentBase<T>.ConvertEmbeddingForSerialization(queryVector);
+            if (serializedVector == null)
+            {
+                throw new InvalidOperationException("Serialized query vector conversion returned null.");
+            }
             // empty json object for using default value if multiplier is 0
             string obj_expr = searchListSizeMultiplier == 0 ? "{}" : $"{{ 'searchListSizeMultiplier': {searchListSizeMultiplier} }}";
             string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding) AS similarityScore " +
                 $"FROM c {whereClause} ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false, {obj_expr})";
-            return new QueryDefinition(queryText).WithParameter("@vectorEmbedding", queryVectorInt);
+            return new QueryDefinition(queryText).WithParameter("@vectorEmbedding", serializedVector);
 
         }
 
