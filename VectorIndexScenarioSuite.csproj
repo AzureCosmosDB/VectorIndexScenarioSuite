@@ -43,12 +43,13 @@
     </None>        
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="src\BigANNBinaryEmbeddingScenarioBase.cs" />
-    <Compile Include="src\BigANNBinaryFormat.cs" />
+    <Compile Include="src\EmbeddingScenarioBase.cs" />
+    <Compile Include="src\BinaryFormat.cs" />
     <Compile Include="src\EmbeddingDocumentBase.cs" />
     <Compile Include="src\GroundTruthValidator.cs" />
     <Compile Include="src\JsonDocumentFactory.cs" />
     <Compile Include="src\MSMarcoEmbeddingOnlyScenario.cs" />
+    <Compile Include="src\BigANNSiftEmbeddingOnlyScenario.cs" />
     <Compile Include="src\MSTuringEmbeddingOnlyScenario.cs" />
     <Compile Include="src\Program.cs" />
     <Compile Include="src\Runbook.cs" />

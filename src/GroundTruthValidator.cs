@@ -86,7 +86,7 @@
         }
         private async Task LoadGroundTruthDataFromBinaryFile(string filePath)
         {
-            await foreach ((int vectorId, int[] groundTruthNeighborIds, float[] groundTruthNeighborDistances) in BigANNBinaryFormat.GetGroundTruthDataAsync(filePath))
+            await foreach ((int vectorId, int[] groundTruthNeighborIds, float[] groundTruthNeighborDistances) in BinaryFormat.GetGroundTruthDataAsync(filePath))
             {
                 List<IdWithSimilarityScore> idWithSimilarityScores = new List<IdWithSimilarityScore>();
                 for (int i = 0; i < groundTruthNeighborIds.Length; i++)

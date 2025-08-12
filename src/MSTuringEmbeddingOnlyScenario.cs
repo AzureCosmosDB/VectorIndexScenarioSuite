@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Configuration;
 namespace VectorIndexScenarioSuite
 { 
-    internal class MSTuringEmbeddingOnlyScenario : BigANNBinaryEmbeddingScenarioBase
+    internal class MSTuringEmbeddingOnlyScenario : EmbeddingScenarioBase<float>
     {
         protected override string BaseDataFile => "base";
         protected override string BinaryFileExt => "fbin";

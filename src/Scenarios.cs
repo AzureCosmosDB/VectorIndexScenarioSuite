@@ -3,6 +3,7 @@
     internal enum Scenarios
     {
         AutomotiveEcommerce,
+        BigANNEmbeddingOnly,
         MSMarcoEmbeddingOnly,
         MSTuringEmbeddingOnly,
         WikiCohereEnglishEmbeddingOnly,
@@ -22,6 +23,8 @@
             {
                 case "automotive-ecommerce":
                     return Scenarios.AutomotiveEcommerce;
+                case "bigann-embedding-only":
+                    return Scenarios.BigANNEmbeddingOnly;
                 case "ms-marco-embedding-only":
                     return Scenarios.MSMarcoEmbeddingOnly;
                 case "ms-turing-embedding-only":
