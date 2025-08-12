@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 namespace VectorIndexScenarioSuite.Tests
 {
     [TestClass]
-    public class GenericFeatureTest : VectorTestBase
+    public class FailedAndCustomIdIngestionTest : VectorTestBase
     {
         // Releveant configurations.
         private static string WikiTestParams = @"
