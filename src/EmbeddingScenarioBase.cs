@@ -517,7 +517,7 @@ namespace VectorIndexScenarioSuite
                             this.queryRecallResults =
                                     new ConcurrentDictionary<int, ConcurrentDictionary<string, List<IdWithSimilarityScore>>>();
 
-                            int totalQueryVectors = BigANNBinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
+                            int totalQueryVectors = BinaryFormat.GetBinaryDataHeader(GetQueryDataPath()).Item1;
                             for (int kI = 0; kI < K_VALS.Length; kI++)
                             {
                                 Console.WriteLine($"Performing {totalQueryVectors} queries for Recall/RU/Latency stats for K: {K_VALS[kI]}.");
