@@ -1,11 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-	<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+	  <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>  
   </PropertyGroup>
   <PropertyGroup>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
@@ -13,7 +14,7 @@
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.13.1" />
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
-    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.46.1" />
+    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.50.0-preview.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
@@ -21,7 +22,7 @@
     <PackageReference Include="YamlDotNet" Version="16.1.0" />
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None> 
+    </None>
     <None Update="runbooks/wikipedia-1M_expirationtime_runbook.yaml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -39,18 +40,16 @@
     </None>
     <None Update="runbooks/wikipedia-35M_expirationtime_replace_delete_runbook.yaml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>         
+    </None>        
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="src\EmbeddingScearioBase.cs" />
+    <Compile Include="src\EmbeddingScenarioBase.cs" />
     <Compile Include="src\BinaryFormat.cs" />
     <Compile Include="src\EmbeddingDocumentBase.cs" />
-    <Compile Include="src\filtersearch\YFCCScenario.cs" />
-    <Compile Include="src\filtersearch\YFCCDocument.cs" />
     <Compile Include="src\GroundTruthValidator.cs" />
     <Compile Include="src\JsonDocumentFactory.cs" />
     <Compile Include="src\MSMarcoEmbeddingOnlyScenario.cs" />
-    <Compile Include="src\BigANNEmbeddingOnlyScenario.cs" />
+    <Compile Include="src\BigANNSiftEmbeddingOnlyScenario.cs" />
     <Compile Include="src\MSTuringEmbeddingOnlyScenario.cs" />
     <Compile Include="src\Program.cs" />
     <Compile Include="src\Runbook.cs" />

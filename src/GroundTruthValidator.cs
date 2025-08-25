@@ -34,28 +34,16 @@
                 groundTruthIdsForQuery.Clear();
                 resultIdsForQuery.Clear();
 
-                // for filter search, there might have less than K results
-                for (int i = 0; i < queryResults[queryId].Count; i++)
+                for(int i = 0; i < queryKValue; i++)
                 {
                     resultIdsForQuery.Add(queryResults[queryId][i].Id);
-                }
-
-                // for filter search, if the ground truth is -1, means there is no result
-                for (int i = queryResults[queryId].Count; i < queryKValue; i++)
-                {
-                    if (this.groundTruth[queryId][i].Id == "-1")
-                    {
-                        // -1 filled for non reuslt.
-                        Console.WriteLine($"Ground truth id is -1 for queryId: {queryId} at {i}/K");
-                        //cumulativeTruePositive++;
-                    }
                 }
 
                 /* Compute valid ground truth ids for the query 
                  * Handle scenario where multiple vectors have the same similarity score as the kth vector
                  */
                 int tieBreaker = queryKValue - 1;
-                while (this.groundTruth[queryId][tieBreaker].Id != "-1" &&tieBreaker < this.groundTruth[queryId].Count &&
+                while (tieBreaker < this.groundTruth[queryId].Count &&
                     this.groundTruth[queryId][tieBreaker].SimilarityScore == this.groundTruth[queryId][queryKValue - 1].SimilarityScore)
                 {
                     tieBreaker++;

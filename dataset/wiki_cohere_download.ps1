@@ -62,6 +62,11 @@ function CreateSlice {
     $writer.Close()
 }
 
+# Generate 10K Slice (no ground truth, just the vectors)
+$basePath = Resolve-Path -Path $destinationFolder\wikipedia_base_35000000.fbin
+$new10KSlicePath = Join-Path $destinationFolder "wikipedia_base_10000.fbin"
+CreateSlice -basePath $basePath -newSliceBasePath $new10KSlicePath -numVectors 10000
+
 # Generate 100K Slice
 $basePath = Resolve-Path -Path $destinationFolder\wikipedia_base_35000000.fbin
 $new100KSlicePath = Join-Path $destinationFolder "wikipedia_base_100000.fbin"

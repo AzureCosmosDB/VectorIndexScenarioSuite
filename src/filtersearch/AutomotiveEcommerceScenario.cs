@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Configuration;
 namespace VectorIndexScenarioSuite.filtersearch
 { 
-    internal class AutomotiveEcommerceScenario : EmbeddingScearioBase<float>
+    internal class AutomotiveEcommerceScenario : EmbeddingScenarioBase<float>
     {
         protected override string BaseDataFile => "base";
         protected override string BinaryFileExt => "fbin";

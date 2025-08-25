@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 namespace VectorIndexScenarioSuite
 {
     /*
-     * Parser for BigANNBinaryFormat.
+     * Parser for BinaryFormat.
      * Please see: https://big-ann-benchmarks.com/neurips21.html#bench-datasets for format details.
      */
     internal class BinaryFormat
@@ -160,7 +160,7 @@ namespace VectorIndexScenarioSuite
                         await fileStream.ReadAsync(buffer, 0, Marshal.SizeOf<T>());
                         vector[d] = MemoryMarshal.Read<T>(buffer); // Convert the buffer to the generic type T
                     }
-                    var line = await labelreader.ReadLineAsync();
+                    var line = await labelreader.ReadLineAsync() ?? string.Empty;
 
                     yield return (currentId, vector, line);
                 }

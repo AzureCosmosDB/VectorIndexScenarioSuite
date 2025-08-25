@@ -5,7 +5,7 @@ using VectorIndexScenarioSuite.filtersearch;
 
 namespace VectorIndexScenarioSuite
 {
-    internal class Program
+    public class Program
     {
         static async Task Main(string[] args)
         {
@@ -49,7 +49,7 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        static void TraceConfigKeyValues(IConfiguration configurations)
+        public static void TraceConfigKeyValues(IConfiguration configurations)
         {
             Console.WriteLine("Executing VectorIndexScenarioSuite.");
             foreach (var configuration in configurations.AsEnumerable())
@@ -58,7 +58,7 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        static Scenario CreateScenario(IConfiguration configurations)
+        public static Scenario CreateScenario(IConfiguration configurations)
         {
             string scenarioName = configurations["AppSettings:scenario:name"] ?? throw new ArgumentNullException("AppSettings:scenario:name");
             Scenarios scenarios = ScenarioParser.Parse(scenarioName);
@@ -68,7 +68,7 @@ namespace VectorIndexScenarioSuite
                 case Scenarios.AutomotiveEcommerce:
                     return new AutomotiveEcommerceScenario(configurations);
                 case Scenarios.BigANNEmbeddingOnly:
-                    return new BigANNEmbeddingOnlyScenario(configurations);
+                    return new BigANNSiftEmbeddingOnlyScenario(configurations);
                 case Scenarios.MSMarcoEmbeddingOnly:
                     return new MSMarcoEmbeddingOnlyScenario(configurations);
                 case Scenarios.MSTuringEmbeddingOnly:
@@ -87,8 +87,6 @@ namespace VectorIndexScenarioSuite
                     return new WikiCohereEnglishEmbeddingOnly35MDeleteReplaceStreamingScenario(configurations);
                 case Scenarios.WikiCohereEnglishEmbeddingOnly35MReplaceStreaming:
                     return new WikiCohereEnglishEmbeddingOnly35MReplaceStreamingScenario(configurations);
-                case Scenarios.YFCC:
-                    return new YFCCScenario(configurations);
                 default:
                     throw new System.Exception($"Scenario {scenarioName} is not supported.");
             }

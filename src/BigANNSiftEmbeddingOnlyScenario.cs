@@ -2,7 +2,9 @@
 using Microsoft.Extensions.Configuration;
 namespace VectorIndexScenarioSuite
 { 
-    internal class BigANNEmbeddingOnlyScenario : EmbeddingScearioBase<byte>
+    //"BIGANN consists of SIFT descriptors applied to images from extracted from a large image dataset."
+    //Reference : https://big-ann-benchmarks.com/neurips21.html
+    internal class BigANNSiftEmbeddingOnlyScenario : EmbeddingScenarioBase<byte>
     {
         protected override string BaseDataFile => "base";
         protected override string BinaryFileExt => "u8bin";
@@ -17,7 +19,7 @@ namespace VectorIndexScenarioSuite
         protected override int MaxPhysicalPartitionCount => 56;
         protected override string RunName => "BigANN-embeddingonly-" + guid;
 
-        public BigANNEmbeddingOnlyScenario(IConfiguration configurations) : 
+        public BigANNSiftEmbeddingOnlyScenario(IConfiguration configurations) : 
             base(configurations, DefaultInitialAndFinalThroughput(configurations).Item1)
         {
         }
