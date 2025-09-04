@@ -87,6 +87,8 @@ namespace VectorIndexScenarioSuite
                     return new WikiCohereEnglishEmbeddingOnly35MDeleteReplaceStreamingScenario(configurations);
                 case Scenarios.WikiCohereEnglishEmbeddingOnly35MReplaceStreaming:
                     return new WikiCohereEnglishEmbeddingOnly35MReplaceStreamingScenario(configurations);
+                case Scenarios.YFCC:
+                    return new YFCCScenario(configurations);
                 default:
                     throw new System.Exception($"Scenario {scenarioName} is not supported.");
             }
