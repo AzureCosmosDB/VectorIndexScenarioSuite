@@ -165,11 +165,20 @@ namespace VectorIndexScenarioSuite
             CosmosClientOptions cosmosClientOptions = new()
             {
                 ConnectionMode = ConnectionMode.Direct,
-                AllowBulkExecution = bulkExecution,
+                AllowBulkExecution = false,
                 // SDK will handle throttles and also wait for the amount of time the service tells it to wait and retry after the time has elapsed.
                 // Please see : https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/how-to-migrate-from-bulk-executor-library
-                MaxRetryAttemptsOnRateLimitedRequests = 100,
-                MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(600)
+                MaxRetryAttemptsOnRateLimitedRequests = 1,
+                MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(600),
+                CosmosClientTelemetryOptions = new CosmosClientTelemetryOptions()
+                {
+                    DisableDistributedTracing = false,
+                    CosmosThresholdOptions = new CosmosThresholdOptions()
+                    {
+                        PointOperationLatencyThreshold = TimeSpan.FromMilliseconds(100),
+                        NonPointOperationLatencyThreshold = TimeSpan.FromMilliseconds(500)
+                    }
+                },
             };
 
             bool useEmulator = Convert.ToBoolean(this.Configurations["AppSettings:useEmulator"]);

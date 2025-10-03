@@ -271,14 +271,17 @@ namespace VectorIndexScenarioSuite
                 bool retryQueryOnFailureForLatencyMeasurement;
                 do
                 {
-                    FeedIterator<IdWithSimilarityScore> queryResultSetIterator =
+                    // Create cancellation token which will timeout the query if it takes more than the specified time.
+                    CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                cts.CancelAfter(TimeSpan.FromSeconds(10));
+                using FeedIterator<IdWithSimilarityScore> queryResultSetIterator =
                         this.CosmosContainerForQuery.GetItemQueryIterator<IdWithSimilarityScore>(queryDefinition,
                 requestOptions: new QueryRequestOptions { MaxConcurrency = maxConcurrancy });
 
                     retryQueryOnFailureForLatencyMeasurement = false;
                     while (queryResultSetIterator.HasMoreResults)
                     {
-                        var queryResponse = await queryResultSetIterator.ReadNextAsync();
+                        var queryResponse = await queryResultSetIterator.ReadNextAsync(cts.Token);
 
                         if (!isWarmup)
                         {

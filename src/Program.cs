@@ -1,14 +1,24 @@
-﻿using Microsoft.Extensions.Configuration;
-using System.Diagnostics;
-using VectorIndexScenarioSuite.filtersearch;
-
-
+﻿    using global::OpenTelemetry;
+    using global::OpenTelemetry.Trace;
+    using global::OpenTelemetry.Resources;
+    using System;
+    using System.Threading.Tasks;
+    using Newtonsoft.Json;
+    using Microsoft.Azure.Cosmos;
+    using Microsoft.Extensions.Logging;
+    using Microsoft.Extensions.Configuration;
+    using Azure.Monitor.OpenTelemetry.Exporter;
+using OpenTelemetry;
+    using System.Diagnostics;
+using OpenTelemetry.Logs;
+using Microsoft.Extensions.Azure;
 namespace VectorIndexScenarioSuite
 {
     public class Program
     {
         static async Task Main(string[] args)
         {
+
             // Setup configuration builder
             var builder = new ConfigurationBuilder()
                 .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
@@ -17,6 +27,35 @@ namespace VectorIndexScenarioSuite
         
             var configurations = builder.Build();
             TraceConfigKeyValues(configurations);
+
+                            // <SetUpOpenTelemetry>
+                ResourceBuilder resource = ResourceBuilder.CreateDefault().AddService(
+                            serviceName: "VectorIndexScenarioSuite",
+                            serviceVersion: "1.0.0");
+
+                // Set up logging to forward logs to chosen exporter
+                using ILoggerFactory loggerFactory
+                    = LoggerFactory.Create(builder => builder
+                                                        .AddOpenTelemetry(options =>
+                                                        {
+                                                            options.IncludeFormattedMessage = true;
+                                                            options.SetResourceBuilder(resource);
+                                                            options.AddConsoleExporter();
+                                                        }));
+                /*.AddFilter(level => level == LogLevel.Error) // Filter  is irrespective of event type or event name*/
+
+                AzureEventSourceLogForwarder logforwader = new AzureEventSourceLogForwarder(loggerFactory);
+                logforwader.Start();
+
+                // Configure OpenTelemetry trace provider
+                AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);
+                var _traceProvider = Sdk.CreateTracerProviderBuilder()
+                    .AddSource("Azure.Cosmos.Operation", // Cosmos DB source for operation level telemetry
+                               "Sample.Application") 
+                    .AddHttpClientInstrumentation() // Added to capture HTTP telemetry
+                    .SetResourceBuilder(resource)
+                    .Build();
+                // </SetUpOpenTelemetry>
 
             string scenarioName = configurations["AppSettings:scenario:name"] ?? throw new ArgumentNullException("AppSettings:scenario:name");
 
@@ -65,8 +104,6 @@ namespace VectorIndexScenarioSuite
 
             switch (scenarios)
             {
-                case Scenarios.AutomotiveEcommerce:
-                    return new AutomotiveEcommerceScenario(configurations);
                 case Scenarios.BigANNEmbeddingOnly:
                     return new BigANNSiftEmbeddingOnlyScenario(configurations);
                 case Scenarios.MSMarcoEmbeddingOnly:
@@ -87,8 +124,6 @@ namespace VectorIndexScenarioSuite
                     return new WikiCohereEnglishEmbeddingOnly35MDeleteReplaceStreamingScenario(configurations);
                 case Scenarios.WikiCohereEnglishEmbeddingOnly35MReplaceStreaming:
                     return new WikiCohereEnglishEmbeddingOnly35MReplaceStreamingScenario(configurations);
-                case Scenarios.YFCC:
-                    return new YFCCScenario(configurations);
                 default:
                     throw new System.Exception($"Scenario {scenarioName} is not supported.");
             }
