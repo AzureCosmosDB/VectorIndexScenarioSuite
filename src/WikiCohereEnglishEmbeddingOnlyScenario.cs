@@ -31,6 +31,7 @@ namespace VectorIndexScenarioSuite
             int sliceCount = Convert.ToInt32(configurations["AppSettings:scenario:sliceCount"]);
             switch (sliceCount)
             {
+                case FIVE_THOUSAND:
                 case TEN_THOUSAND:
                 case HUNDRED_THOUSAND:
                 case ONE_MILLION:
@@ -40,7 +41,10 @@ namespace VectorIndexScenarioSuite
                 case THIRTY_FIVE_MILLION:
                     return (40000, 70000);
                 default:
-                    throw new ArgumentException("Invalid slice count.");
+                    // For arbitrary slice counts (e.g. perf comparison runs), keep a single
+                    // physical partition with modest throughput; the container RU can still be
+                    // overridden via AppSettings:cosmosContainerRUInitial / RUFinal.
+                    return (400, 10000);
             }
         }
     }

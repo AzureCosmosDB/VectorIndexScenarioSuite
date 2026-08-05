@@ -33,5 +33,14 @@ msbuild.log
 msbuild.err
 msbuild.wrn
 
+# Generated benchmark datasets and run artifacts
+data/runLog/
+data/wikipedia_*.fbin
+data/wikipedia_truth_*
+perf/r3/
+perf/r4/
+perf/*.log
+perf/*.out
+
 # Visual Studio 2015
 .vs/

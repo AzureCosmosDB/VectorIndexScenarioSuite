@@ -34,6 +34,19 @@ namespace VectorIndexScenarioSuite
 
         protected ScenarioMetrics ingestionMetrics;
 
+        /* Perf comparison instrumentation (spherical vs product quantizer). */
+        protected double ingestionDurationMs = 0;
+        protected double indexCatchupDurationMs = 0;
+        protected double queryPhaseDurationMs = 0;
+        protected bool diskAnnValidationRan = false;
+        protected bool diskAnnUsed = false;
+        protected long diskAnnApproxRetrievedDocs = 0;
+        protected long diskAnnExactRetrievedDocs = 0;
+        protected double diskAnnApproxRU = 0;
+        protected double diskAnnExactRU = 0;
+        protected double diskAnnApproxVsExactOverlap = 0;
+        protected string effectiveQuantizerType = "";
+
         public EmbeddingScenarioBase(IConfiguration configurations, int throughPut) : 
             base(configurations, throughPut)
         {
@@ -67,6 +80,15 @@ namespace VectorIndexScenarioSuite
                 Path = this.EmbeddingPath,
                 Type = VectorIndexType.DiskANN,
             };
+            string quantizerTypeSetting = this.Configurations["AppSettings:scenario:quantizerType"];
+            if (!string.IsNullOrEmpty(quantizerTypeSetting))
+            {
+                if (!Enum.TryParse<QuantizerType>(quantizerTypeSetting, ignoreCase: true, out var quantizerType))
+                {
+                    throw new ArgumentException($"Invalid quantizerType '{quantizerTypeSetting}'. Valid values: {string.Join(", ", Enum.GetNames(typeof(QuantizerType)))}.");
+                }
+                vectorIndexPath.QuantizerType = quantizerType;
+            }
             if (!string.IsNullOrEmpty(this.Configurations["AppSettings:scenario:quantizationByteSize"]))
             {
                 var quantizationByteSize = Convert.ToInt32(this.Configurations["AppSettings:scenario:quantizationByteSize"]);
@@ -342,7 +364,7 @@ namespace VectorIndexScenarioSuite
             }
         }
 
-        private QueryDefinition ConstructQueryDefinition(int K, T[] queryVector, string whereClause)
+        private QueryDefinition ConstructQueryDefinition(int K, T[] queryVector, string whereClause, bool exact = false)
         {
             int searchListSizeMultiplier = Convert.ToInt32(this.Configurations["AppSettings:scenario:searchListSizeMultiplier"]);
 
@@ -353,10 +375,135 @@ namespace VectorIndexScenarioSuite
             }
             // empty json object for using default value if multiplier is 0
             string obj_expr = searchListSizeMultiplier == 0 ? "{}" : $"{{ 'searchListSizeMultiplier': {searchListSizeMultiplier} }}";
-            string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding) AS similarityScore " +
-                $"FROM c {whereClause} ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, false, {obj_expr})";
+            string exactExpr = exact ? "true" : "false";
+            string queryText = $"SELECT TOP {K} c.id, VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding) AS similarityScore " +
+                $"FROM c {whereClause} ORDER BY VectorDistance(c.{this.EmbeddingColumn}, @vectorEmbedding, {exactExpr}, {obj_expr})";
             return new QueryDefinition(queryText).WithParameter("@vectorEmbedding", serializedVector);
 
+        }
+
+        /// <summary>
+        /// Validates that the DiskANN vector index is actually used for search. Runs the same
+        /// query as an index-based (approximate) search and as a brute-force (exact) search, then
+        /// compares retrieved-document counts and RU charge. When the index is used, the approximate
+        /// search retrieves far fewer documents and costs far fewer RUs than the full scan.
+        /// </summary>
+        private async Task ValidateDiskANNUsageAsync(string dataPath)
+        {
+            const int validationK = 10;
+            this.diskAnnValidationRan = true;
+
+            await foreach ((int vectorId, T[] vector, string whereClause) in
+                JsonDocumentFactory<T>.GetQueryAsync(dataPath, 0 /* startVectorId */, 1 /* single query */, this.IsFilterSearch))
+            {
+                (List<string> approxIds, long approxDocs, double approxRU) = await RunSingleQueryWithMetrics(validationK, vector, whereClause, exact: false);
+                (List<string> exactIds, long exactDocs, double exactRU) = await RunSingleQueryWithMetrics(validationK, vector, whereClause, exact: true);
+
+                this.diskAnnApproxRetrievedDocs = approxDocs;
+                this.diskAnnExactRetrievedDocs = exactDocs;
+                this.diskAnnApproxRU = approxRU;
+                this.diskAnnExactRU = exactRU;
+
+                int overlap = approxIds.Intersect(exactIds).Count();
+                this.diskAnnApproxVsExactOverlap = exactIds.Count == 0 ? 0 : (overlap * 100.0 / exactIds.Count);
+
+                // Heuristic: index is used when the approximate scan touches strictly fewer docs than
+                // the exact (brute-force) scan AND costs fewer RUs. (When retrieved-doc counts are not
+                // surfaced, fall back to the RU comparison alone.)
+                bool fewerDocs = (approxDocs > 0 && exactDocs > 0) ? approxDocs < exactDocs : true;
+                bool cheaper = approxRU < exactRU;
+                this.diskAnnUsed = fewerDocs && cheaper;
+
+                Console.WriteLine("[DISKANN-VALIDATION] " +
+                    $"approx(index): retrievedDocs={approxDocs}, RU={approxRU:F2} | " +
+                    $"exact(scan): retrievedDocs={exactDocs}, RU={exactRU:F2} | " +
+                    $"top{validationK} overlap={this.diskAnnApproxVsExactOverlap:F1}% | " +
+                    $"DiskANN used={this.diskAnnUsed}");
+                break;
+            }
+        }
+
+        private async Task<(List<string> ids, long retrievedDocs, double ru)> RunSingleQueryWithMetrics(
+            int K, T[] vector, string whereClause, bool exact)
+        {
+            var queryDefinition = ConstructQueryDefinition(K, vector, whereClause, exact);
+            var ids = new List<string>();
+            long retrievedDocs = 0;
+            double ru = 0;
+
+            FeedIterator<IdWithSimilarityScore> iterator =
+                this.CosmosContainerForQuery.GetItemQueryIterator<IdWithSimilarityScore>(
+                    queryDefinition, requestOptions: new QueryRequestOptions { MaxConcurrency = this.MaxPhysicalPartitionCount });
+            while (iterator.HasMoreResults)
+            {
+                var response = await iterator.ReadNextAsync();
+                ru += response.RequestCharge;
+                foreach (var item in response)
+                {
+                    ids.Add(item.Id);
+                }
+                var metrics = response.Diagnostics.GetQueryMetrics();
+                if (metrics != null)
+                {
+                    foreach (var partitionMetrics in metrics.PartitionedMetrics)
+                    {
+                        retrievedDocs += partitionMetrics.ServerSideMetrics.RetrievedDocumentCount;
+                    }
+                }
+            }
+            return (ids, retrievedDocs, ru);
+        }
+
+        /// <summary>
+        /// Waits for the asynchronous DiskANN graph build ("lazy catch-up") to complete by probing
+        /// the data plane: it repeatedly issues the index-based (approximate) vector query and watches
+        /// the retrieved-document count. While the graph is still building, the engine falls back to a
+        /// full scan (retrieves ~all vectors); once the graph is ready the approximate search retrieves
+        /// far fewer documents. Returns the elapsed time in milliseconds when the graph engages, or the
+        /// elapsed time so far if the timeout is hit (with a warning).
+        /// </summary>
+        private async Task<double> WaitForDiskANNGraphBuildAsync(
+            string dataPath, int ingestedVectors, TimeSpan pollInterval, TimeSpan timeout)
+        {
+            const int probeK = 10;
+            T[]? probeVector = null;
+            string probeWhere = string.Empty;
+            await foreach ((int vectorId, T[] vector, string whereClause) in
+                JsonDocumentFactory<T>.GetQueryAsync(dataPath, 0 /* startVectorId */, 1 /* single */, this.IsFilterSearch))
+            {
+                probeVector = vector;
+                probeWhere = whereClause;
+                break;
+            }
+            if (probeVector == null)
+            {
+                Console.WriteLine("[CATCHUP] No probe query vector available; skipping graph-build wait.");
+                return -1;
+            }
+
+            // The graph is considered "engaged" once the approximate search retrieves fewer than half
+            // the ingested vectors (in practice it drops to ~probeK * searchListSize, far below this).
+            long engageThreshold = Math.Max(1L, ingestedVectors / 2L);
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            while (true)
+            {
+                (_, long retrievedDocs, double ru) = await RunSingleQueryWithMetrics(probeK, probeVector, probeWhere, exact: false);
+                Console.WriteLine($"[CATCHUP] probe approx retrievedDocs={retrievedDocs}, RU={ru:F2}, elapsed={stopwatch.Elapsed.TotalSeconds:F0}s (engage if < {engageThreshold})");
+
+                if (retrievedDocs > 0 && retrievedDocs < engageThreshold)
+                {
+                    stopwatch.Stop();
+                    Console.WriteLine($"[CATCHUP] DiskANN graph engaged after {stopwatch.Elapsed.TotalSeconds:F1}s.");
+                    return stopwatch.Elapsed.TotalMilliseconds;
+                }
+                if (stopwatch.Elapsed >= timeout)
+                {
+                    stopwatch.Stop();
+                    Console.WriteLine($"[CATCHUP] WARNING: DiskANN graph did not engage within {timeout.TotalMinutes:F0} min (still retrieving {retrievedDocs}).");
+                    return stopwatch.Elapsed.TotalMilliseconds;
+                }
+                await Task.Delay(pollInterval);
+            }
         }
 
         private string GetBaseDataPath()
@@ -415,6 +562,35 @@ namespace VectorIndexScenarioSuite
 
         protected async Task RunScenario()
         {
+            // Read back the effective indexing policy so we can detect whether the backend honored the
+            // requested quantizerType or silently coerced it (e.g. spherical -> product when the account
+            // does not have the spherical-quantizer preview enabled). A coerced run would make a
+            // spherical-vs-product comparison meaningless, so we surface the effective value explicitly.
+            try
+            {
+                string requestedQuantizer = this.Configurations["AppSettings:scenario:quantizerType"] ?? "";
+                var containerResponse = await this.CosmosContainerForIngestion.ReadContainerAsync();
+                var vectorIndexes = containerResponse.Resource?.IndexingPolicy?.VectorIndexes;
+                if (vectorIndexes != null && vectorIndexes.Count > 0)
+                {
+                    this.effectiveQuantizerType = vectorIndexes[0].QuantizerType.ToString();
+                    foreach (var vi in vectorIndexes)
+                    {
+                        Console.WriteLine($"[QUANTIZER-CHECK] path={vi.Path} indexType={vi.Type} effectiveQuantizer={vi.QuantizerType} (requested={requestedQuantizer})");
+                    }
+                    if (!string.IsNullOrEmpty(requestedQuantizer) &&
+                        !string.Equals(this.effectiveQuantizerType, requestedQuantizer, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine($"[QUANTIZER-CHECK] WARNING: requested quantizerType '{requestedQuantizer}' was coerced to '{this.effectiveQuantizerType}' by the backend. " +
+                            "The account may not have this quantizer enabled; comparison results for this run are NOT valid for the requested quantizer.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[QUANTIZER-CHECK] Could not read back effective quantizer type: {ex.Message}");
+            }
+
             bool onlyIngestFailedIds = Convert.ToBoolean(this.Configurations["AppSettings:onlyIngestFailedIds"]);
             if (onlyIngestFailedIds)
             {
@@ -434,13 +610,39 @@ namespace VectorIndexScenarioSuite
                     int startVectorId = Convert.ToInt32(this.Configurations["AppSettings:scenario:startVectorId"]);
                     int endVectorId = Convert.ToInt32(this.Configurations["AppSettings:scenario:endVectorId"]);
                     int totalVectors = ((endVectorId == 0 || endVectorId < startVectorId) ? sliceCount : endVectorId) - startVectorId;
+
+                    var ingestStopwatch = System.Diagnostics.Stopwatch.StartNew();
                     await PerformIngestion(IngestionOperationType.Insert, null /* startTagId */, startVectorId /* startVectorId */, totalVectors);
+                    ingestStopwatch.Stop();
+                    this.ingestionDurationMs = ingestStopwatch.Elapsed.TotalMilliseconds;
+                    Console.WriteLine($"[PERF] Ingestion of {totalVectors} vectors took {this.ingestionDurationMs / 1000.0:F2}s.");
+
+                    // Measure lazy index catch-up: wait for the asynchronous DiskANN graph build to
+                    // complete, detected by probing the data plane until the approximate query stops
+                    // falling back to a full scan.
+                    Console.WriteLine("[PERF] Waiting for lazy index catch-up (async DiskANN graph build)...");
+                    int catchupTimeoutMin = 30;
+                    string? catchupTimeoutCfg = this.Configurations["AppSettings:scenario:catchupTimeoutMinutes"];
+                    if (!string.IsNullOrWhiteSpace(catchupTimeoutCfg) && int.TryParse(catchupTimeoutCfg, out int parsedTimeout) && parsedTimeout > 0)
+                    {
+                        catchupTimeoutMin = parsedTimeout;
+                    }
+                    this.indexCatchupDurationMs = await WaitForDiskANNGraphBuildAsync(
+                        GetQueryDataPath(),
+                        totalVectors,
+                        pollInterval: TimeSpan.FromSeconds(20),
+                        timeout: TimeSpan.FromMinutes(catchupTimeoutMin));
+                    Console.WriteLine($"[PERF] Lazy index catch-up took {this.indexCatchupDurationMs / 1000.0:F2}s.");
                 }
 
                 bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
 
                 if (runQuery)
                 {
+                    // Validate the vector index (DiskANN) is actually used by comparing an index-based
+                    // (approximate) query against a brute-force (exact) query on the same vector.
+                    await ValidateDiskANNUsageAsync(GetQueryDataPath());
+
                     bool performWarmup = Convert.ToBoolean(this.Configurations["AppSettings:scenario:warmup:enabled"]);
                     if (performWarmup)
                     {
@@ -455,11 +657,15 @@ namespace VectorIndexScenarioSuite
                     int numQueries = Convert.ToInt32(this.Configurations["AppSettings:scenario:numQueries"]);
                     numQueries = numQueries == 0 ? totalQueryVectors : numQueries;
 
+                    var queryStopwatch = System.Diagnostics.Stopwatch.StartNew();
                     for (int kI = 0; kI < K_VALS.Length; kI++)
                     {
                         Console.WriteLine($"Performing {numQueries} queries for Recall/RU/Latency stats for K: {K_VALS[kI]}.");
                         await PerformQuery(false /* isWarmup */, numQueries, K_VALS[kI] /*KVal*/, GetQueryDataPath());
                     }
+                    queryStopwatch.Stop();
+                    this.queryPhaseDurationMs = queryStopwatch.Elapsed.TotalMilliseconds;
+                    Console.WriteLine($"[PERF] Query phase took {this.queryPhaseDurationMs / 1000.0:F2}s.");
                 }
             }
         }
@@ -620,6 +826,7 @@ namespace VectorIndexScenarioSuite
             bool runQuery = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runQuery"]);
             bool computeRecall = Convert.ToBoolean(this.Configurations["AppSettings:scenario:computeRecall"]);
 
+            var recallByK = new Dictionary<int, float>();
             if (runQuery && computeRecall)
             {
                 Console.WriteLine("Computing Recall.");
@@ -631,6 +838,7 @@ namespace VectorIndexScenarioSuite
                 {
                     int kVal = K_VALS[kI];
                     float recall = groundTruthValidator.ComputeRecall(kVal, this.queryRecallResults[kVal]);
+                    recallByK[kVal] = recall;
 
                     Console.WriteLine($"Recall for K = {kVal} is {recall}.");
                 }
@@ -642,6 +850,67 @@ namespace VectorIndexScenarioSuite
                 bool runIngestion = Convert.ToBoolean(this.Configurations["AppSettings:scenario:runIngestion"]);
                 ComputeLatencyAndRUStats(runIngestion, runQuery);
             }
+
+            EmitResultJson(recallByK);
+        }
+
+        /// <summary>
+        /// Emits a single machine-readable summary line (prefixed RESULT_JSON:) so an external
+        /// orchestrator can aggregate spherical-vs-product comparison results across runs.
+        /// </summary>
+        private void EmitResultJson(Dictionary<int, float> recallByK)
+        {
+            string quantizerType = this.Configurations["AppSettings:scenario:quantizerType"] ?? "";
+            string datasetLabel = this.Configurations["AppSettings:scenario:datasetLabel"] ?? "";
+            string containerId = this.Configurations["AppSettings:cosmosContainerId"] ?? "";
+            int endVectorId = Convert.ToInt32(this.Configurations["AppSettings:scenario:endVectorId"]);
+            int sliceCount = Convert.ToInt32(this.Configurations["AppSettings:scenario:sliceCount"]);
+            int startVectorId = Convert.ToInt32(this.Configurations["AppSettings:scenario:startVectorId"]);
+            int ingestedVectors = ((endVectorId == 0 || endVectorId < startVectorId) ? sliceCount : endVectorId) - startVectorId;
+
+            var recallParts = new List<string>();
+            foreach (var kv in recallByK)
+            {
+                recallParts.Add($"\"{kv.Key}\":{kv.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+            }
+
+            double avgClientLatency = 0, avgRU = 0;
+            double avgServerLatency = 0, p50ServerLatency = 0, p99ServerLatency = 0;
+            if (K_VALS.Length > 0 && this.queryMetrics.ContainsKey(K_VALS[0]))
+            {
+                avgClientLatency = this.queryMetrics[K_VALS[0]].GetClientLatencyStatistics().Avg;
+                avgRU = this.queryMetrics[K_VALS[0]].GetRequestUnitStatistics().Avg;
+                var serverStats = this.queryMetrics[K_VALS[0]].GetServerLatencyStatistics();
+                avgServerLatency = serverStats.Avg;
+                p50ServerLatency = serverStats.P50;
+                p99ServerLatency = serverStats.P99;
+            }
+
+            System.Func<double, string> f = v => v.ToString("F4", System.Globalization.CultureInfo.InvariantCulture);
+            string json = "{" +
+                $"\"datasetLabel\":\"{datasetLabel}\"," +
+                $"\"quantizerType\":\"{quantizerType}\"," +
+                $"\"effectiveQuantizerType\":\"{this.effectiveQuantizerType}\"," +
+                $"\"container\":\"{containerId}\"," +
+                $"\"ingestedVectors\":{ingestedVectors}," +
+                $"\"ingestionDurationMs\":{f(this.ingestionDurationMs)}," +
+                $"\"indexCatchupDurationMs\":{f(this.indexCatchupDurationMs)}," +
+                $"\"queryPhaseDurationMs\":{f(this.queryPhaseDurationMs)}," +
+                $"\"avgQueryClientLatencyMs\":{f(avgClientLatency)}," +
+                $"\"avgQueryServerLatencyMs\":{f(avgServerLatency)}," +
+                $"\"p50QueryServerLatencyMs\":{f(p50ServerLatency)}," +
+                $"\"p99QueryServerLatencyMs\":{f(p99ServerLatency)}," +
+                $"\"avgQueryRU\":{f(avgRU)}," +
+                $"\"recall\":{{{string.Join(",", recallParts)}}}," +
+                $"\"diskAnnValidationRan\":{this.diskAnnValidationRan.ToString().ToLowerInvariant()}," +
+                $"\"diskAnnUsed\":{this.diskAnnUsed.ToString().ToLowerInvariant()}," +
+                $"\"diskAnnApproxRetrievedDocs\":{this.diskAnnApproxRetrievedDocs}," +
+                $"\"diskAnnExactRetrievedDocs\":{this.diskAnnExactRetrievedDocs}," +
+                $"\"diskAnnApproxRU\":{f(this.diskAnnApproxRU)}," +
+                $"\"diskAnnExactRU\":{f(this.diskAnnExactRU)}," +
+                $"\"diskAnnApproxVsExactOverlapPct\":{f(this.diskAnnApproxVsExactOverlap)}" +
+                "}";
+            Console.WriteLine("RESULT_JSON: " + json);
         }
     }
 }
