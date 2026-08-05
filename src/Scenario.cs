@@ -41,6 +41,7 @@ namespace VectorIndexScenarioSuite
         public const int COSMOSDB_MAX_BATCH_SIZE = 100;
 
         /* Known Slices */
+        protected const int FIVE_THOUSAND = 5000;
         protected const int TEN_THOUSAND = 10000;
         protected const int HUNDRED_THOUSAND = 100000;
         protected const int ONE_MILLION =  1000000;
@@ -144,7 +145,82 @@ namespace VectorIndexScenarioSuite
             {
                 throughput = final_RUValue; // override the throughput value from the config file
             }
-            await this.CosmosContainerForIngestion.ReplaceThroughputAsync(throughput);
+            try
+            {
+                await this.CosmosContainerForIngestion.ReplaceThroughputAsync(throughput);
+            }
+            catch (Exception ex)
+            {
+                // Throughput management may be unavailable when using AAD auth without control-plane
+                // permissions (or on pre-provisioned containers). Don't let this crash the run.
+                Console.WriteLine($"Warning: could not replace throughput ({throughput} RU/s): {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Polls the container's index transformation progress until the index (including the
+        /// DiskANN vector index) is fully built, i.e. the "lazy catch-up" completes.
+        /// Returns the elapsed time in milliseconds. Returns -1 if the progress header is
+        /// unavailable, or the elapsed time so far if the timeout is hit.
+        /// </summary>
+        protected async Task<double> WaitForIndexTransformationAsync(
+            TimeSpan pollInterval, TimeSpan timeout)
+        {
+            const string ProgressHeader = "x-ms-documentdb-collection-index-transformation-progress";
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            int lastProgress = -1;
+            bool headerSeen = false;
+
+            while (true)
+            {
+                int progress = -1;
+                try
+                {
+                    ContainerResponse response = await this.CosmosContainerForIngestion.ReadContainerAsync(
+                        requestOptions: new ContainerRequestOptions { PopulateQuotaInfo = true });
+                    string? raw = response.Headers[ProgressHeader];
+                    if (!string.IsNullOrEmpty(raw) && int.TryParse(raw, out int parsed))
+                    {
+                        progress = parsed;
+                        headerSeen = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Warning: could not read index transformation progress: {ex.Message}");
+                }
+
+                if (progress != lastProgress)
+                {
+                    Console.WriteLine($"Index transformation progress: {progress}% (elapsed {stopwatch.Elapsed.TotalSeconds:F1}s)");
+                    lastProgress = progress;
+                }
+
+                // progress == 100 => fully built. If the header is never returned (e.g. progress is
+                // reported as -1 meaning "already up to date"), treat a non-in-progress state as done.
+                if (progress >= 100)
+                {
+                    stopwatch.Stop();
+                    return stopwatch.Elapsed.TotalMilliseconds;
+                }
+
+                if (stopwatch.Elapsed >= timeout)
+                {
+                    Console.WriteLine($"Warning: index transformation did not reach 100% within {timeout.TotalSeconds}s (last {lastProgress}%).");
+                    stopwatch.Stop();
+                    return stopwatch.Elapsed.TotalMilliseconds;
+                }
+
+                await Task.Delay(pollInterval);
+
+                if (!headerSeen && stopwatch.Elapsed > TimeSpan.FromSeconds(30))
+                {
+                    // Header never surfaced; nothing to wait on.
+                    Console.WriteLine("Index transformation progress header unavailable; skipping catch-up wait.");
+                    stopwatch.Stop();
+                    return -1;
+                }
+            }
         }
 
         protected async Task LogErrorToFile(string filePath, string message)

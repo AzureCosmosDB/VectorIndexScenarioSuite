@@ -1,0 +1,12 @@
+{
+  "account1": {
+    "endpoint": "https://your-account.documents.azure.com:443/",
+    "account": "your-account",
+    "resourceGroup": "your-resource-group"
+  },
+  "account2": {
+    "endpoint": "https://your-second-account.documents.azure.com:443/",
+    "account": "your-second-account",
+    "resourceGroup": "your-second-resource-group"
+  }
+}
